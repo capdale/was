@@ -1,5 +1,8 @@
 config.yaml
 
+# tmp (fresh)
+/tmp/
+
 # static
 /static/
 
