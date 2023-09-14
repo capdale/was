@@ -1,1 +1,15 @@
 config.yaml
+
+# tmp (fresh)
+/tmp/
+
+# static
+/static/
+
+# docker volume
+/data/mysql/*
+/data/redis/conf/redis.conf
+
+# bin
+main
+main.exe

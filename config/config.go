@@ -1,4 +1,4 @@
-package server
+package config
 
 import (
 	"os"
@@ -29,7 +29,7 @@ type Key struct {
 	Jwtkey string `yaml:"jwtkey"`
 }
 
-func parseConfig(filepath string) (c *Config, err error) {
+func ParseConfig(filepath string) (c *Config, err error) {
 	buf, err := os.ReadFile(filepath)
 	if err != nil {
 		return
@@ -38,5 +38,4 @@ func parseConfig(filepath string) (c *Config, err error) {
 	c = &Config{}
 	err = yaml.Unmarshal(buf, c)
 	return
-
 }
