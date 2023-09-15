@@ -15,13 +15,14 @@ ENV PATH "/usr/local/go/bin:${PATH}"
 
 WORKDIR /server
 
-COPY go.mod go.sum ./ ./
+COPY go.mod go.sum ./
 
-RUN go mod download && \
-    go build main.go
+RUN go mod download
+
+COPY ./ ./
 
 EXPOSE 8080
 
 CMD [ "/bin/bash", "-c", "go build main.go" ]
 
-ENTRYPOINT [ "/bin/bash", "-c", "./main.go" ]
+ENTRYPOINT [ "/bin/bash", "-c", "go run main.go" ]
