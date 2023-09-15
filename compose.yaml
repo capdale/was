@@ -23,6 +23,7 @@ services:
     ports:
       - 3306:3306
     environment:
+      MYSQL_DATABASE: was
       MYSQL_ROOT_PASSWORD: password
     volumes:
       - C:/data/mysql/:/var/lib/mysql
