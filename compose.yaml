@@ -1,14 +1,4 @@
 services:
-  was:
-    container_name: was
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - 80:8080
-    volumes:
-      - ./static:/server/static
-
   redis:
     image: "redis:alpine"
     container_name: was_redis
@@ -27,5 +17,24 @@ services:
       MYSQL_ROOT_PASSWORD: password
     volumes:
       - C:/data/mysql/:/var/lib/mysql
-  
+    networks:
+      - backdb
+
+  was:
+    container_name: was
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 80:8080
+    volumes:
+      - ./static:/server/static
+    networks:
+      - backdb
+    depends_on:
+      - mysql
+      - redis
+
+networks:
+  backdb:
   
