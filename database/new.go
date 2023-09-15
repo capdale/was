@@ -15,7 +15,7 @@ type Database struct {
 
 func New(config *config.Config) (db *Database, err error) {
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)was?charset=utf8mb4&parseTime=True&loc=Local",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/was?charset=utf8mb4&parseTime=True&loc=Local",
 		config.Mysql.Username,
 		config.Mysql.Password,
 		config.Mysql.Address,

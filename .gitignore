@@ -4,7 +4,7 @@ config.yaml
 /tmp/
 
 # static
-/static/
+/static/*
 
 # docker volume
 /data/mysql/*
