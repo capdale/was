@@ -15,6 +15,16 @@ docker build --progress=plain --tag was .
 docker run -d --name was -p 80:8080 was
 ```
 
+### Docker Compose build
+```powershell
+docker compose build
+```
+
+### Docker Compose up
+```powershell
+docker compose up -d
+```
+
 
 ### File structure
 ```
