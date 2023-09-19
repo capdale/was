@@ -20,8 +20,11 @@ type AuthClaims struct {
 	jwt.RegisteredClaims
 }
 
-var ErrTokenInvalid = errors.New("token is invalid")
-var ErrTypeParse = errors.New("fail parse custom claim")
+var (
+	ErrTokenInvalid   = errors.New("token is invalid")
+	ErrTypeParse      = errors.New("fail parse custom claim")
+	ErrTokenBlacklist = errors.New("token is blacklist")
+)
 
 func (a *AuthClaims) isExpired() bool {
 	return time.Until(a.ExpiresAt.Time) < 0
@@ -65,4 +68,18 @@ func (a *Auth) ParseToken(tokenString string) (claims *AuthClaims, err error) {
 	}
 
 	return
+}
+
+func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
+	claims, err := a.ParseToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	isBlacklist := a.IsBlacklist(tokenString)
+	if isBlacklist {
+		return nil, ErrTokenBlacklist
+	}
+
+	return claims, nil
 }
