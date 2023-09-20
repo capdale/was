@@ -14,3 +14,46 @@ docker build --progress=plain --tag was .
 ```powershell
 docker run -d --name was -p 80:8080 was
 ```
+
+### Docker Compose build
+```powershell
+docker compose build
+```
+
+### Docker Compose up
+```powershell
+docker compose up -d
+```
+
+
+### File structure
+```
+was
+ ┣ api
+ ┃ ┣ collect
+ ┃ ┃ ┗ collect.go
+ ┃ ┗ api.go
+ ┣ config
+ ┃ ┗ config.go
+ ┣ database
+ ┃ ┗ new.go
+ ┣ model
+ ┣ server
+ ┃ ┗ server.go
+ ┣ static
+ ┣ .dockerignore
+ ┣ .gitignore
+ ┣ compose.yaml
+ ┣ Dockerfile
+ ┣ example.yaml
+ ┣ go.mod
+ ┣ go.sum
+ ┣ main.go
+ ┗ readme.md
+```
+/api - collection of api  
+/config - config type and parser  
+/database - database method  
+/model - database schema  
+/server - initial server settings  
+/static - store static file  
