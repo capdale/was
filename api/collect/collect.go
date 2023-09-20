@@ -19,8 +19,14 @@ func New(database database) *CollectAPI {
 	}
 }
 
-func (a *CollectAPI) PostCollectHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
+func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{
+		"collection": "",
+	})
+}
+
+func (a *CollectAPI) PostCollectHandler(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{
 		"ok": "ok",
 	})
 }
