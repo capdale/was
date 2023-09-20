@@ -58,6 +58,8 @@ func SetupRouter() (r *gin.Engine) {
 	}
 	r.Use(sessions.Sessions("authstate", st))
 
+	auth := auth.New(d, store)
+
 	r.GET("/", func(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusOK, gin.H{
 			"ok": "ok",
@@ -66,16 +68,16 @@ func SetupRouter() (r *gin.Engine) {
 
 	collectAPI := collect.New(d)
 
-	collectRouter := r.Group("/collect")
+	collectRouter := r.Group("/collect").Use(auth.AuthorizeRequiredMiddleware())
 	{
+		collectRouter.GET("/", collectAPI.GetCollectection)
 		collectRouter.POST("/", collectAPI.PostCollectHandler)
 	}
 
-	auth := auth.New(d, store)
 	authAPI := authapi.New(d, auth)
 	authRouter := r.Group("/auth")
 	{
-		r.POST("/blacklist", authAPI.SetBlacklistHandler)
+		r.Use(auth.AuthorizeRequiredMiddleware()).POST("/blacklist", authAPI.SetBlacklistHandler)
 
 		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
 			ClientID:     config.Oauth.Github.Id,
