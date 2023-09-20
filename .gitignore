@@ -13,3 +13,6 @@ config.yaml
 # bin
 main
 main.exe
+
+# data
+test.json
