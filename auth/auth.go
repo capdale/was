@@ -1,13 +1,17 @@
 package auth
 
-import "github.com/gin-gonic/gin"
+import (
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
 
 type database interface {
 }
 
 type store interface {
 	IsBlacklist(token string) (bool, error)
-	SetBlacklist(token string) error
+	SetBlacklist(token string, expiration time.Duration) error
 }
 
 type Auth struct {
@@ -16,7 +20,7 @@ type Auth struct {
 	secret []byte
 }
 
-func (a *Auth) New(database database, store store) *Auth {
+func New(database database, store store) *Auth {
 	return &Auth{
 		DB:    database,
 		Store: store,

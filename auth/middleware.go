@@ -24,6 +24,7 @@ func (a *Auth) AuthorizeRequiredMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		ctx.Set("token", tokenString)
 		ctx.Set("claims", claims)
 		ctx.Next()
 	}

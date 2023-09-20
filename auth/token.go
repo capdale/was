@@ -35,6 +35,7 @@ func (a *Auth) GenerateToken(dp *AuthPayload) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	expirationTime := time.Now().Add(time.Hour)
 	claims := &AuthClaims{
 		Username:     dp.Username,
