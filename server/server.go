@@ -4,11 +4,19 @@ import (
 	"net/http"
 	"time"
 
+	authapi "github.com/capdale/was/api/auth"
+	githubAuth "github.com/capdale/was/api/auth/github"
 	"github.com/capdale/was/api/collect"
+	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
+	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
 )
 
 func SetupRouter() (r *gin.Engine) {
@@ -18,9 +26,12 @@ func SetupRouter() (r *gin.Engine) {
 
 	r.Use(cors.New(
 		cors.Config{
-			AllowOrigins:     []string{"http://localhost:5500"}, // test front addr
-			AllowMethods:     []string{"POST", "GET", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "content-type"},
+			AllowOrigins: []string{"http://localhost:5500"}, // test front addr
+			AllowMethods: []string{"POST", "GET", "DELETE", "OPTIONS", "PUT"},
+			AllowHeaders: []string{
+				"Origin", "Content-Type", "Upgrade",
+				"X-MD-Token", "Accept-Encoding", "Accept-Language",
+				"Authorization", "Host"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
 		},
@@ -36,6 +47,17 @@ func SetupRouter() (r *gin.Engine) {
 		panic(err)
 	}
 
+	store, err := store.New(&config.Redis)
+	if err != nil {
+		panic(err)
+	}
+
+	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte("secret"))
+	if err != nil {
+		panic(err)
+	}
+	r.Use(sessions.Sessions("authstate", st))
+
 	r.GET("/", func(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusOK, gin.H{
 			"ok": "ok",
@@ -47,6 +69,26 @@ func SetupRouter() (r *gin.Engine) {
 	collectRouter := r.Group("/collect")
 	{
 		collectRouter.POST("/", collectAPI.PostCollectHandler)
+	}
+
+	auth := auth.New(d, store)
+	authAPI := authapi.New(d, auth)
+	authRouter := r.Group("/auth")
+	{
+		r.POST("/blacklist", authAPI.SetBlacklistHandler)
+
+		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
+			ClientID:     config.Oauth.Github.Id,
+			ClientSecret: config.Oauth.Github.Secret,
+			RedirectURL:  config.Oauth.Github.Redirect,
+			Scopes:       []string{"user:email"},
+			Endpoint:     github.Endpoint,
+		})
+		githubAuthRouter := authRouter.Group("/github")
+		{
+			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
+			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
+		}
 	}
 
 	return
