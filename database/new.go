@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/capdale/was/config"
+	"github.com/capdale/was/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -45,6 +46,8 @@ func New(config *config.Config) (db *Database, err error) {
 }
 
 func (d *Database) AutoMigrate() (err error) {
-	err = d.DB.AutoMigrate()
+	err = d.DB.AutoMigrate(
+		&model.User{},
+	)
 	return err
 }
