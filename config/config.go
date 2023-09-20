@@ -10,6 +10,7 @@ type Config struct {
 	Mysql Mysql `yaml:"mysql"`
 	Redis Redis `yaml:"redis"`
 	Key   Key   `yaml:"key"`
+	Oauth Oauth `yaml:"oauth"`
 }
 
 type Mysql struct {
@@ -27,6 +28,16 @@ type Redis struct {
 
 type Key struct {
 	Jwtkey string `yaml:"jwtkey"`
+}
+
+type Oauth struct {
+	Github Github `yaml:"github"`
+}
+
+type Github struct {
+	Id       string `yaml:"id"`
+	Secret   string `yaml:"secret"`
+	Redirect string `yaml:"redirect"`
 }
 
 func ParseConfig(filepath string) (c *Config, err error) {
