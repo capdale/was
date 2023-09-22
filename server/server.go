@@ -78,7 +78,6 @@ func SetupRouter() (r *gin.Engine) {
 	authRouter := r.Group("/auth")
 	{
 		r.Use(auth.AuthorizeRequiredMiddleware()).POST("/blacklist", authAPI.SetBlacklistHandler)
-
 		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
 			ClientID:     config.Oauth.Github.Id,
 			ClientSecret: config.Oauth.Github.Secret,
