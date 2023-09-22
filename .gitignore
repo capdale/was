@@ -6,13 +6,24 @@ config.yaml
 # static
 /static/*
 
-# docker volume
-/data/mysql/*
-/data/redis/conf/redis.conf
-
-# bin
-main
-main.exe
-
 # data
 test.json
+
+# build
+/build/*
+
+# docker
+# config
+/docker/config.yaml
+
+# bin
+/docker/was-linux-amd64
+/docker/was-linux-arm64
+/docker/was-linux-riscv64
+/docker/was-windows-386.exe
+/docker/was-windows-amd64.exe
+/docker/was-windows-arm64.exe
+
+# bin
+/main.exe
+/was.exe
