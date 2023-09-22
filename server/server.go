@@ -10,6 +10,7 @@ import (
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
+	rpcclient "github.com/capdale/was/rpc"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -17,10 +18,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
+	"google.golang.org/grpc"
 )
 
-func SetupRouter() (r *gin.Engine) {
-	r = gin.Default()
+type RouterOpened struct {
+	Rpc *grpc.ClientConn
+}
+
+func (r *RouterOpened) Close() {
+	r.Rpc.Close()
+}
+
+func SetupRouter() (*gin.Engine, *RouterOpened) {
+	r := gin.Default()
 
 	// config := cors.DefaultConfig()
 
@@ -38,6 +48,11 @@ func SetupRouter() (r *gin.Engine) {
 	))
 
 	config, err := config.ParseConfig("config.yaml")
+	if err != nil {
+		panic(err)
+	}
+
+	conn, rpcClient, err := rpcclient.New(&config.Rpc)
 	if err != nil {
 		panic(err)
 	}
@@ -66,7 +81,7 @@ func SetupRouter() (r *gin.Engine) {
 		})
 	})
 
-	collectAPI := collect.New(d)
+	collectAPI := collect.New(d, rpcClient.ImageClassifyClient)
 
 	collectRouter := r.Group("/collect").Use(auth.AuthorizeRequiredMiddleware())
 	{
@@ -92,5 +107,7 @@ func SetupRouter() (r *gin.Engine) {
 		}
 	}
 
-	return
+	return r, &RouterOpened{
+		Rpc: conn,
+	}
 }
