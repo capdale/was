@@ -11,4 +11,9 @@ redis:
 
 key:
     jwtkey: jwtkey
-    
+
+oauth:
+    github:
+        id: "client id"
+        secret: "client secret"
+        redirect: "redirect url"

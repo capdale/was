@@ -28,9 +28,9 @@ func New(database database, store store) *Auth {
 }
 
 func (a *Auth) tokenFromCTX(ctx *gin.Context) string {
-	if token := a.tokenFromQuery(ctx); token != "" {
+	if token := a.tokenFromXToken(ctx); token != "" {
 		return token
-	} else if token := a.tokenFromXToken(ctx); token != "" {
+	} else if token := a.tokenFromQuery(ctx); token != "" {
 		return token
 	}
 	return ""

@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Mysql Mysql `yaml:"mysql"`
 	Redis Redis `yaml:"redis"`
+	Rpc   Rpc   `yaml:"rpc"`
 	Key   Key   `yaml:"key"`
 	Oauth Oauth `yaml:"oauth"`
 }
@@ -24,6 +25,10 @@ type Redis struct {
 	Address  string `yaml:"address"`
 	Password string `yaml:"password"`
 	Db       int    `yaml:"db"`
+}
+
+type Rpc struct {
+	Address string `yaml:"address"`
 }
 
 type Key struct {

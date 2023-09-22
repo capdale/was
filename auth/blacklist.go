@@ -1,6 +1,5 @@
 package auth
 
-func (a *Auth) IsBlacklist(token string) bool {
-	_, err := a.Store.IsBlacklist(token)
-	return err != nil
+func (a *Auth) IsBlacklist(token string) (bool, error) {
+	return a.Store.IsBlacklist(token)
 }

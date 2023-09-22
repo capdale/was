@@ -5,6 +5,8 @@ services:
     restart: always
     ports: 
       - 6379:6379
+    networks:
+      - backnet
 
   mysql:
     image: "mysql:latest"
@@ -18,23 +20,9 @@ services:
     volumes:
       - C:/data/mysql/:/var/lib/mysql
     networks:
-      - backdb
-
-  was:
-    container_name: was
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - 80:8080
-    volumes:
-      - ./static:/server/static
-    networks:
-      - backdb
-    depends_on:
-      - mysql
-      - redis
-
+      - backnet
+      
 networks:
-  backdb:
-  
+  backnet:
+    name: backnet
+    driver: bridge
