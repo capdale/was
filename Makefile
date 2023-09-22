@@ -2,6 +2,10 @@ APP_NAME=was
 BUILD_DIR=./build/
 DOCKER_DIR=./docker/
 
+PATH_RESOLVE=MSYS2_ARG_CONV_EXCL='*'
+DOCKER_RUN=docker run -v .:/src -w /src
+DOCKER_IMAGE=golang:latest
+
 cp-config:
 	cp config.yaml ./docker/config.yaml
 
@@ -38,4 +42,5 @@ docker-linux-arm64: cp-config
 	docker build --tag was -f ${DOCKER_DIR}Dockerfile.arm64
 
 # default
-docker-build: docker-linux-amd64
+docker-build:
+	${PATH_RESOLVE} ${DOCKER_RUN} -e GOOS=linux -e GOARCH=amd64 ${DOCKER_IMAGE} make build-linux-amd64
