@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -55,8 +56,10 @@ func (a *Auth) GenerateToken(dp *AuthPayload) (string, error) {
 }
 
 func (a *Auth) ParseToken(tokenString string) (claims *AuthClaims, err error) {
+	claims = &AuthClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) { return a.secret, nil })
 	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -77,7 +80,10 @@ func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
 		return nil, err
 	}
 
-	isBlacklist := a.IsBlacklist(tokenString)
+	isBlacklist, err := a.IsBlacklist(tokenString)
+	if err != nil {
+		return nil, err
+	}
 	if isBlacklist {
 		return nil, ErrTokenBlacklist
 	}
