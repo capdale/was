@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/capdale/was/location"
+	rpc_protocol "github.com/capdale/was/rpc/proto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,12 +13,14 @@ type database interface {
 }
 
 type CollectAPI struct {
-	DB database
+	DB                   database
+	ImageClassifiyClient *rpc_protocol.ImageClassifyClient
 }
 
-func New(database database) *CollectAPI {
+func New(database database, imageClassifyClient *rpc_protocol.ImageClassifyClient) *CollectAPI {
 	return &CollectAPI{
-		DB: database,
+		DB:                   database,
+		ImageClassifiyClient: imageClassifyClient,
 	}
 }
 
@@ -53,7 +56,16 @@ func (a *CollectAPI) PostCollectHandler(ctx *gin.Context) {
 
 	fmt.Println(*geoLocation)
 
+	reply, err := (*a.ImageClassifiyClient).ClassifyImage(ctx, &rpc_protocol.ImageClassifierRequest{Image: *b})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"ok": "ok",
+		"ok":    "ok",
+		"class": reply.ClassIndex,
 	})
 }
