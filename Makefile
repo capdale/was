@@ -30,17 +30,41 @@ build-windows-arm64:
 	GOOS=windows GOARCH=arm64 go build -o ${BUILD_DIR}${APP_NAME}-windows-arm64.exe
 
 # build all
-build: build-linux-amd64 build-linux-arm64 build-windows-amd64 build-windows-arm64
+build-all: build-linux-amd64 build-linux-arm64 build-windows-amd64 build-windows-arm64
+
+# default build
+build: build-linux-amd64
+
+
+# build in docker
+# linux
+docker-build-linux-amd64:
+	${PATH_RESOLVE} ${DOCKER_RUN} ${DOCKER_IMAGE} make build-linux-amd64
+
+docker-build-linux-arm64:
+	${PATH_RESOLVE} ${DOCKER_RUN} ${DOCKER_IMAGE} make build-linux-arm64
+
+# window
+docker-build-windows-amd64:
+	${PATH_RESOLVE} ${DOCKER_RUN} ${DOCKER_IMAGE} make build-widnows-amd64
+
+docker-build-windows-arm64:
+	${PATH_RESOLVE} ${DOCKER_RUN} ${DOCKER_IMAGE} make build-widnows-arm64
+
+# docker build all
+docker-build-all: docker-build-linux-amd64 docker-build-linux-arm64 docker-build-windows-amd64 docker-build-windows-arm64
+
+# default
+docker-build: docker-build-linux-amd64
 
 # docker
-docker-linux-amd64: cp-config
+docker-image-linux-amd64: cp-config
 	cp ${BUILD_DIR}${APP_NAME}-linux-amd64 ${DOCKER_DIR}
 	docker build --tag was ${DOCKER_DIR}.
 
-docker-linux-arm64: cp-config
+docker-image-linux-arm64: cp-config
 	cp ${BUILD_DIR}${APP_NAME}-linux-arm64 ${DOCKER_DIR}
-	docker build --tag was -f ${DOCKER_DIR}Dockerfile.arm64
+	docker build --tag arm64/was -f ${DOCKER_DIR}Dockerfile.arm64
 
-# default
-docker-build:
-	${PATH_RESOLVE} ${DOCKER_RUN} -e GOOS=linux -e GOARCH=amd64 ${DOCKER_IMAGE} make build-linux-amd64
+docker-image: docker=image-linux-amd64
+
