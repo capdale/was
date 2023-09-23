@@ -3,7 +3,7 @@ BUILD_DIR=./build/
 DOCKER_DIR=./docker/
 
 PATH_RESOLVE=MSYS2_ARG_CONV_EXCL='*'
-DOCKER_RUN=docker run -v .:/src -w /src
+DOCKER_RUN=docker run -v .:/src/app -w /src/app
 DOCKER_IMAGE=golang:latest
 
 cp-config:
@@ -57,7 +57,7 @@ docker-build-all: docker-build-linux-amd64 docker-build-linux-arm64 docker-build
 # default
 docker-build: docker-build-linux-amd64
 
-# docker
+# build docker image
 docker-image-linux-amd64: cp-config
 	cp ${BUILD_DIR}${APP_NAME}-linux-amd64 ${DOCKER_DIR}
 	docker build --tag was ${DOCKER_DIR}.
@@ -66,5 +66,5 @@ docker-image-linux-arm64: cp-config
 	cp ${BUILD_DIR}${APP_NAME}-linux-arm64 ${DOCKER_DIR}
 	docker build --tag arm64/was -f ${DOCKER_DIR}Dockerfile.arm64
 
-docker-image: docker=image-linux-amd64
+docker-image: docker-image-linux-amd64
 
