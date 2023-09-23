@@ -5,28 +5,64 @@ Birdex was server
 Ref [example.yaml](./example.yaml), rename to config.yaml  
 
 
-### Docker build
+### Build (Native)
+Require go  
 ```powershell
-docker build --progress=plain --tag was .
+# build default (linux-amd64)
+make build # or make build-linux-amd64
+
+# build linux-arm64
+make build-linux-arm64
+
+# build windows-amd64
+make build-widnows-amd64
+
+# build windows-arm64
+make build-windows-arm64
+
+# build all
+make build-all
 ```
 
-### Docker run
+### Build (Docker)
 ```powershell
-docker run -d --name was -p 80:8080 was
+# build default (linux-amd64)
+make docker-build # or make docker-build-linux-amd64
+
+# build linux-arm64
+make docker-build-linux-arm64
+
+# build windows-amd64
+make docker-build-widnows-amd64
+
+# build windows-arm64
+make docker-build-windows-arm64
+
+# build all
+make docker-build-all
 ```
 
-### Docker Compose build
+### Build Docker Image
+With current ./config.yaml  
 ```powershell
-docker compose build
+# build docker default image (linux-amd64)
+make docker-image # or make docker-image-linux-amd64
+# tag was
+
+#build linux-arm64 docker image 
+make docker-image-linux-arm64
+# tag arm64/was
 ```
 
-### Docker Compose up
+### Background service for development
+[./compose.yaml](./compose.yaml)  
+- docker network -net backnet
+- port
+    - redis: 6379:6379
+    - mysql: 3306:3306
 ```powershell
 docker compose up -d
 ```
-
-## Protocol Buffer
-[Protocol Buffer](https://protobuf.dev/overview/)  
 
 ### File structure
 ```
@@ -54,8 +90,8 @@ was
  ┗ readme.md
 ```
 /api - collection of api  
-/config - config type and parser  
-/database - database method  
+/config - config parser  
+/database - database functions    
 /model - database schema  
 /server - initial server settings  
 /static - store static file  
