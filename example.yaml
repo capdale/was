@@ -1,19 +1,41 @@
+service:
+  address: ":8080"
+  cors:
+    allowOrigins:
+      - "*"
+    allowMethods:
+      - GET
+      - DELETE
+      - PUT
+      - POST
+    allowHeaders:
+      - X-MD-Token
+    allowCredentials: true
+    exposeHeaders:
+
+    maxAge: 3600 # seconds
+    allowWildcard: false
+    allowBrowserExtensions: false
+    allowWebSockets: true
+    allowFiles: false # warning, false is default
+
 mysql:
-    username: username
-    password: password
-    address: address
-    port: 1234
+  username: username
+  password: password
+  address: address
+  port: 1234
 
 redis:
-    address: address
-    password: password
-    db: 0
+  address: address
+  password: password
+  db: 0
 
 key:
-    jwtkey: jwtkey
+  jwtkey: jwtKey
+  sessionStateKey: sessionStateKey
 
 oauth:
-    github:
-        id: "client id"
-        secret: "client secret"
-        redirect: "redirect url"
+  github:
+    id: "client id"
+    secret: "client secret"
+    redirect: "redirect url"
