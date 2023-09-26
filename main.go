@@ -1,10 +1,21 @@
 package main
 
-import "github.com/capdale/was/server"
+import (
+	"github.com/capdale/was/config"
+	"github.com/capdale/was/server"
+)
 
 func main() {
-	r, c := server.SetupRouter()
+	config, err := config.ParseConfig("config.yaml")
+	if err != nil {
+		panic(err)
+	}
+
+	r, c, err := server.SetupRouter(config)
+	if err != nil {
+		panic(err)
+	}
 	defer c.Close()
 
-	r.Run(":8080")
+	r.Run(config.Service.Address)
 }
