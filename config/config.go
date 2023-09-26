@@ -18,6 +18,7 @@ type Config struct {
 type Service struct {
 	Address string `yaml:"address"`
 	Cors    Cors   `yaml:"cors"`
+	Log     Log    `yaml:"log"`
 }
 
 type Cors struct {
@@ -31,6 +32,13 @@ type Cors struct {
 	AllowBrowserExtensions bool     `default:"false" yaml:"allowBrowserExtensions"`
 	AllowWebSockets        bool     `default:"true" yaml:"allowWebSockets"`
 	AllowFiles             bool     `default:"false" yaml:"allowFiles"`
+}
+
+type Log struct {
+	Path      string `yaml:"path"`
+	MaxSize   int    `yaml:"MaxSize"`
+	LocalTime bool   `yaml:"localitme"`
+	Compress  bool   `yaml:"compress"`
 }
 
 type Mysql struct {
