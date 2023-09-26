@@ -14,13 +14,13 @@ type Database struct {
 	DB *gorm.DB
 }
 
-func New(config *config.Config) (db *Database, err error) {
+func New(mysqlConfig *config.Mysql) (db *Database, err error) {
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/was?charset=utf8mb4&parseTime=True&loc=Local",
-		config.Mysql.Username,
-		config.Mysql.Password,
-		config.Mysql.Address,
-		config.Mysql.Port,
+		mysqlConfig.Username,
+		mysqlConfig.Password,
+		mysqlConfig.Address,
+		mysqlConfig.Port,
 	)
 
 	d, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})

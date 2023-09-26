@@ -5,6 +5,16 @@ Birdex was server
 Ref [example.yaml](./example.yaml), rename to config.yaml  
 
 
+### How to run
+Ref [example.yaml](./example.yaml), rename to config.yaml  
+If you want to use docker network, [see this](https://docs.docker.com/network/)  
+```powershell
+make docker-build
+make docker-image
+docker run -d -p 8080:8080 --network backnet was # set your port, image
+```
+
+
 ### Build (Native)
 Require go  
 ```powershell
@@ -56,10 +66,6 @@ make docker-image-linux-arm64
 
 ### Background service for development
 [./compose.yaml](./compose.yaml)  
-- docker network -net backnet
-- port
-    - redis: 6379:6379
-    - mysql: 3306:3306
 ```powershell
 docker compose up -d
 ```

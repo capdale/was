@@ -7,11 +7,30 @@ import (
 )
 
 type Config struct {
-	Mysql Mysql `yaml:"mysql"`
-	Redis Redis `yaml:"redis"`
-	Rpc   Rpc   `yaml:"rpc"`
-	Key   Key   `yaml:"key"`
-	Oauth Oauth `yaml:"oauth"`
+	Service Service `yaml:"service"`
+	Mysql   Mysql   `yaml:"mysql"`
+	Redis   Redis   `yaml:"redis"`
+	Rpc     Rpc     `yaml:"rpc"`
+	Key     Key     `yaml:"key"`
+	Oauth   Oauth   `yaml:"oauth"`
+}
+
+type Service struct {
+	Address string `yaml:"address"`
+	Cors    Cors   `yaml:"cors"`
+}
+
+type Cors struct {
+	AllowOrigins           []string `yaml:"allowOrigins"`
+	AllowMethods           []string `yaml:"allowMethods"`
+	AllowHeaders           []string `yaml:"allowHeaders"`
+	AllowCredentials       bool     `default:"true" yaml:"allowCredentials"`
+	ExposeHeaders          []string `yaml:"exposeHeaders"`
+	MaxAge                 int      `default:"3600" yaml:"maxAge"`
+	AllowWildcard          bool     `default:"false" yaml:"allowWildcard"`
+	AllowBrowserExtensions bool     `default:"false" yaml:"allowBrowserExtensions"`
+	AllowWebSockets        bool     `default:"true" yaml:"allowWebSockets"`
+	AllowFiles             bool     `default:"false" yaml:"allowFiles"`
 }
 
 type Mysql struct {
@@ -32,7 +51,8 @@ type Rpc struct {
 }
 
 type Key struct {
-	Jwtkey string `yaml:"jwtkey"`
+	Jwtkey          string `yaml:"jwtkey"`
+	SessionStateKey string `yaml:"sessionStateKey"`
 }
 
 type Oauth struct {

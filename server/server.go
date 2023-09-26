@@ -29,48 +29,44 @@ func (r *RouterOpened) Close() {
 	r.Rpc.Close()
 }
 
-func SetupRouter() (*gin.Engine, *RouterOpened) {
+func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 	r := gin.Default()
-
-	// config := cors.DefaultConfig()
 
 	r.Use(cors.New(
 		cors.Config{
-			AllowOrigins: []string{"http://localhost:5500"}, // test front addr
-			AllowMethods: []string{"POST", "GET", "DELETE", "OPTIONS", "PUT"},
-			AllowHeaders: []string{
-				"Origin", "Content-Type", "Upgrade",
-				"X-MD-Token", "Accept-Encoding", "Accept-Language",
-				"Authorization", "Host"},
-			AllowCredentials: true,
-			MaxAge:           12 * time.Hour,
+			AllowOrigins:           config.Service.Cors.AllowOrigins, // test front addr
+			AllowMethods:           config.Service.Cors.AllowMethods,
+			AllowHeaders:           config.Service.Cors.AllowHeaders,
+			AllowCredentials:       config.Service.Cors.AllowCredentials,
+			ExposeHeaders:          config.Service.Cors.ExposeHeaders,
+			MaxAge:                 time.Duration(config.Service.Cors.MaxAge) * time.Second,
+			AllowWildcard:          config.Service.Cors.AllowWildcard,
+			AllowBrowserExtensions: config.Service.Cors.AllowBrowserExtensions,
+			AllowWebSockets:        config.Service.Cors.AllowWebSockets,
+			AllowFiles:             config.Service.Cors.AllowFiles,
 		},
 	))
 
-	config, err := config.ParseConfig("config.yaml")
-	if err != nil {
-		panic(err)
-	}
-
 	conn, rpcClient, err := rpcclient.New(&config.Rpc)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
-	d, err := database.New(config)
+	d, err := database.New(&config.Mysql)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
 	store, err := store.New(&config.Redis)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
-	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte("secret"))
+	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte(config.Key.SessionStateKey))
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
+
 	r.Use(sessions.Sessions("authstate", st))
 
 	auth := auth.New(d, store)
@@ -109,5 +105,5 @@ func SetupRouter() (*gin.Engine, *RouterOpened) {
 
 	return r, &RouterOpened{
 		Rpc: conn,
-	}
+	}, nil
 }
