@@ -5,6 +5,13 @@ Birdex was server
 Ref [example.yaml](./example.yaml), rename to config.yaml  
 
 
+### How to run
+```powershell
+make docker-build
+
+```
+
+
 ### Build (Native)
 Require go  
 ```powershell
