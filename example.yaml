@@ -19,11 +19,14 @@ service:
     allowWebSockets: true
     allowFiles: false # warning, false is default
 
+rpc:
+    address: localhost:50050
+
 mysql:
   username: username
   password: password
   address: address
-  port: 1234
+  port: 3306
 
 redis:
   address: address
