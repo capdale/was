@@ -19,6 +19,12 @@ service:
     allowWebSockets: true
     allowFiles: false # warning, false is default
 
+  log:
+    path: ./logs/was.log
+    maxSize: 100
+    localtime: true
+    compress: true
+
 rpc:
     address: localhost:50050
 
