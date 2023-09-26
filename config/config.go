@@ -51,7 +51,8 @@ type Rpc struct {
 }
 
 type Key struct {
-	Jwtkey string `yaml:"jwtkey"`
+	Jwtkey          string `yaml:"jwtkey"`
+	SessionStateKey string `yaml:"sessionStateKey"`
 }
 
 type Oauth struct {
