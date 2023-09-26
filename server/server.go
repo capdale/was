@@ -52,7 +52,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		return nil, nil, err
 	}
 
-	d, err := database.New(config)
+	d, err := database.New(&config.Mysql)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -62,7 +62,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		return nil, nil, err
 	}
 
-	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte("secret"))
+	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte(config.Key.SessionStateKey))
 	if err != nil {
 		return nil, nil, err
 	}
