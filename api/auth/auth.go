@@ -2,6 +2,7 @@ package authapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -38,19 +39,13 @@ func New(database database, auth *auth.Auth) *AuthAPI {
 }
 
 func CheckState(ctx *gin.Context) error {
-	cookie, err := ctx.Cookie("state")
-	if err != nil {
-		return err
-	}
 	session := sessions.Default(ctx)
 	state := session.Get("state")
+	fmt.Println(state)
 	if state == nil {
-		return err
+		return errors.New("asdf")
 	}
-	if state != cookie {
-		return ErrStateNotEqual
-	}
-	session.Delete("state")
+	session.Clear()
 	return nil
 }
 
