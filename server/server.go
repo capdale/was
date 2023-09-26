@@ -34,7 +34,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 
 	r.Use(cors.New(
 		cors.Config{
-			AllowOrigins:           config.Service.Cors.AllowOrigins, // test front addr
+			AllowOrigins:           config.Service.Cors.AllowOrigins,
 			AllowMethods:           config.Service.Cors.AllowMethods,
 			AllowHeaders:           config.Service.Cors.AllowHeaders,
 			AllowCredentials:       config.Service.Cors.AllowCredentials,
@@ -67,8 +67,6 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		return nil, nil, err
 	}
 
-	r.Use(sessions.Sessions("authstate", st))
-
 	auth := auth.New(d, store)
 
 	r.GET("/", func(ctx *gin.Context) {
@@ -96,7 +94,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 			Scopes:       []string{"user:email"},
 			Endpoint:     github.Endpoint,
 		})
-		githubAuthRouter := authRouter.Group("/github")
+		githubAuthRouter := authRouter.Group("/github").Use(sessions.Sessions("state", st))
 		{
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)

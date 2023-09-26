@@ -46,7 +46,6 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 	state := auth.RandToken()
 	session.Set("state", state)
 	session.Save()
-	ctx.SetCookie("state", state, 900, "/auth", "localhost", true, false)
 	ctx.Redirect(http.StatusFound, g.OAuthConfig.AuthCodeURL(state))
 }
 
