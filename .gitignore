@@ -3,6 +3,9 @@ config.yaml
 # tmp (fresh)
 /tmp/
 
+# secret
+/secret/*
+
 # static
 /static/*
 
