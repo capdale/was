@@ -13,10 +13,13 @@ func isValidImage(b *[]byte) bool {
 	if err != nil {
 		return false
 	}
-	if img.Height != 3000 {
+	if img.Height > 3000 && img.Height < 1080 {
 		return false
 	}
-	if img.Width != 3000 {
+	if img.Width > 3000 && img.Width < 1080 {
+		return false
+	}
+	if img.Height != img.Width {
 		return false
 	}
 	return true
