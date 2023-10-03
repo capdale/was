@@ -26,7 +26,9 @@ service:
     compress: true
 
 rpc:
-    address: localhost:50050
+  imageClassify:
+    address:
+      - localhost:50050
 
 mysql:
   username: username

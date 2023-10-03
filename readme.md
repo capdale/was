@@ -101,3 +101,6 @@ was
 /model - database schema  
 /server - initial server settings  
 /static - store static file  
+
+## Proto
+[Check proto here](https://github.com/capdale/rpc-protocol)  

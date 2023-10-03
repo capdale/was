@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
+	imagequeue "github.com/capdale/was/queue/image_queue"
 	rpcclient "github.com/capdale/was/rpc"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
@@ -18,15 +20,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
-	"google.golang.org/grpc"
 )
 
 type RouterOpened struct {
-	Rpc *grpc.ClientConn
+	Rpc *rpcclient.RpcService
 }
 
 func (r *RouterOpened) Close() {
-	r.Rpc.Close()
+	for _, service := range *r.Rpc.ImageClassifies {
+		service.Conn.Close()
+	}
 }
 
 func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
@@ -47,7 +50,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		},
 	))
 
-	conn, rpcClient, err := rpcclient.New(&config.Rpc)
+	rpcClient, err := rpcclient.New(&config.Rpc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,7 +78,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		})
 	})
 
-	collectAPI := collect.New(d, rpcClient.ImageClassifyClient)
+	collectAPI := collect.New(d)
 
 	collectRouter := r.Group("/collect").Use(auth.AuthorizeRequiredMiddleware())
 	{
@@ -101,7 +104,11 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		}
 	}
 
+	imageQueueCTX := context.Background()
+	imageQueue := imagequeue.New(d, time.Duration(time.Second*10), rpcClient.ImageClassifies)
+	imageQueue.Run(&imageQueueCTX)
+
 	return r, &RouterOpened{
-		Rpc: conn,
+		Rpc: rpcClient,
 	}, nil
 }
