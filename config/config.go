@@ -55,7 +55,11 @@ type Redis struct {
 }
 
 type Rpc struct {
-	Address string `yaml:"address"`
+	ImageClassify RpcObject `yaml:"imageClassify"`
+}
+
+type RpcObject struct {
+	Address []string `yaml:"address"`
 }
 
 type Key struct {
