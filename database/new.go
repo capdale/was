@@ -48,6 +48,8 @@ func New(mysqlConfig *config.Mysql) (db *Database, err error) {
 func (d *Database) AutoMigrate() (err error) {
 	err = d.DB.AutoMigrate(
 		&model.User{},
+		&model.Collection{},
+		&model.ImageQueue{},
 	)
 	return err
 }
