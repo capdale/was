@@ -11,7 +11,7 @@ If you want to use docker network, [see this](https://docs.docker.com/network/)
 ```powershell
 make docker-build
 make docker-image
-docker run -d -p 8080:8080 --network backnet was # set your port, image
+docker run -d -p 8080:8080 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
 ```
 
 

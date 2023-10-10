@@ -61,9 +61,10 @@ func (q *ImageQueue) mainRoutine(ctx *context.Context) {
 			images, err := q.DB.PopImageQueues(maxChannelN)
 			// fatal error, need alert
 			if err != nil {
-				fmt.Printf("Image Queue Error: %s", err.Error())
+				fmt.Printf("[%s] Image Queue Error: %s\n", time.Now().String(), err.Error())
 				break
 			}
+			fmt.Printf("[%s] Image Queue Event: query %d images, publish to limited queue\n", time.Now().Format("2006/01/02 - 15:04:05"), len(*images))
 			for _, image := range *images {
 				ch <- &image
 			}
@@ -82,6 +83,7 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 			imageBytes, err := q.getImageAsByte(&image.UUID)
 			if err != nil {
 				// log get image failed, err, need to trace in 10 hours
+				fmt.Println(err)
 				if err := q.DB.RecoverImageQueue(image.ID); err != nil {
 					// log recover failed, err
 					fmt.Println("warning") // TODO: change to log
@@ -91,6 +93,7 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 			reply, err := (*service.Client).ClassifyImage(*ctx, &rpc_protocol.ImageClassifierRequest{Image: *imageBytes})
 			if err != nil {
 				// log rpc server works bad, critical err
+				fmt.Println(err)
 				if err := q.DB.RecoverImageQueue(image.ID); err != nil {
 					// log recover failed, err
 					fmt.Println("warning") // TODO: change to log
@@ -101,7 +104,7 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 				// log delete permanent error
 				fmt.Println("delete data error") // TODO: change to log
 			}
-			fmt.Println(reply.ClassIndex)
+			fmt.Printf("[%s] Image Sub: classify image result: %d\n", time.Now().Format("2006/01/02 - 15:04:05"), reply.ClassIndex)
 			// move to external storage
 			// pub, classify event to subs
 			// ...
@@ -110,7 +113,7 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 			err = q.RemoveImageFile(&image.UUID)
 			if err != nil {
 				// log this, not fatal, warning
-				fmt.Println("remove image file error") // TODO: chane to log
+				fmt.Printf("Remove image file error %s\n", err.Error()) // TODO: chane to log
 			}
 		}
 	}
@@ -122,5 +125,5 @@ func (q *ImageQueue) getImageAsByte(imagePath *uuid.UUID) (*[]byte, error) {
 }
 
 func (q *ImageQueue) RemoveImageFile(imagePath *uuid.UUID) error {
-	return os.Remove(imagePath.String())
+	return os.Remove(path.Join("./secret", imagePath.String()))
 }
