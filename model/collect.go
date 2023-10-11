@@ -7,7 +7,7 @@ import (
 )
 
 type Collection struct {
-	UserUUID        uuid.UUID `gorm:"type:varchar(36);not null"`
+	UserUUID        uuid.UUID `gorm:"type:varchar(36);uniqueIndex;not null"`
 	CollectionIndex int64     `gorm:"not null"`
 	Longtitude      float64   `gorm:"not null"`
 	Latitude        float64   `gorm:"not null"`
