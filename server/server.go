@@ -11,15 +11,18 @@ import (
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
+	"github.com/capdale/was/logger"
 	imagequeue "github.com/capdale/was/queue/image_queue"
 	rpcclient "github.com/capdale/was/rpc"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type RouterOpened struct {
@@ -33,7 +36,19 @@ func (r *RouterOpened) Close() {
 }
 
 func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
-	r := gin.Default()
+	r := gin.New()
+
+	isProduction := gin.Mode() == gin.ReleaseMode
+
+	routerLogger := logger.New(&lumberjack.Logger{
+		Filename:   config.Service.Log.Path,
+		MaxSize:    config.Service.Log.MaxSize,
+		MaxBackups: config.Service.Log.MaxBackups,
+		MaxAge:     config.Service.Log.MaxAge,
+	}, isProduction, config.Service.Log.Console)
+
+	r.Use(ginzap.Ginzap(routerLogger, time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(routerLogger, true))
 
 	r.Use(cors.New(
 		cors.Config{
@@ -105,7 +120,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 	}
 
 	imageQueueCTX := context.Background()
-	imageQueue := imagequeue.New(d, time.Duration(time.Second*10), rpcClient.ImageClassifies)
+	imageQueue := imagequeue.New(d, time.Duration(time.Second*10), rpcClient.ImageClassifies, isProduction, &config.Queue.ImageQueue)
 	imageQueue.Run(&imageQueueCTX)
 
 	return r, &RouterOpened{
