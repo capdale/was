@@ -18,31 +18,40 @@ service:
     allowBrowserExtensions: false
     allowWebSockets: true
     allowFiles: false # warning, false is default
-
   log:
-    path: ./logs/was.log
-    maxSize: 100
-    localtime: true
-    compress: true
+    path: ./logs/app.log
+    maxSize: 10
+    maxBackups: 3
+    maxAge: 30
+    console: true
+
+queue:
+  imageQueue:
+    log:
+      path: ./logs/image_queue.log
+      maxSize: 10
+      maxBackups: 3
+      maxAge: 30
+      console: true
+
+mysql:
+  username: root
+  password: password
+  address: localhost
+  port: 3306
+
+redis:
+  address: localhost:6379
+  password: ""
+  db: 0
 
 rpc:
   imageClassify:
     address:
       - localhost:50050
 
-mysql:
-  username: username
-  password: password
-  address: address
-  port: 3306
-
-redis:
-  address: address
-  password: password
-  db: 0
-
 key:
-  jwtkey: jwtKey
+  jwtkey: jwtkey
   sessionStateKey: sessionStateKey
 
 oauth:
