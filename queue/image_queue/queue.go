@@ -3,15 +3,20 @@ package imagequeue
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"sync"
 	"time"
 
+	"github.com/capdale/was/config"
+	"github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	rpcservice "github.com/capdale/was/rpc"
 	rpc_protocol "github.com/capdale/was/rpc/proto"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type database interface {
@@ -21,6 +26,7 @@ type database interface {
 }
 
 type ImageQueue struct {
+	logger                 *zap.Logger
 	Duration               time.Duration
 	DB                     database
 	imageClassifierSevices *[]*rpcservice.ImageClassify
@@ -29,8 +35,15 @@ type ImageQueue struct {
 
 // change to imageSub (divide)
 
-func New(d database, t time.Duration, imageClassifierSevices *[]*rpcservice.ImageClassify) *ImageQueue {
+func New(d database, t time.Duration, imageClassifierSevices *[]*rpcservice.ImageClassify, isProduction bool, config *config.ImageQueue) *ImageQueue {
+	queueLogger := logger.New(&lumberjack.Logger{
+		Filename:   config.Log.Path,
+		MaxSize:    config.Log.MaxSize,
+		MaxBackups: config.Log.MaxBackups,
+		MaxAge:     config.Log.MaxAge,
+	}, isProduction, config.Log.Console)
 	return &ImageQueue{
+		logger:                 queueLogger,
 		Duration:               t,
 		DB:                     d,
 		imageClassifierSevices: imageClassifierSevices,
@@ -45,11 +58,10 @@ func (q *ImageQueue) Run(ctx *context.Context) {
 
 func (q *ImageQueue) mainRoutine(ctx *context.Context) {
 	ch := make(chan *model.ImageQueue, len(*q.imageClassifierSevices))
-	ticker := time.NewTicker(q.Duration)
 	maxChannelN := len(*q.imageClassifierSevices)
-	defer func() {
-		ticker.Stop()
-	}()
+
+	nSecond := int(math.Round(q.Duration.Seconds()))
+	nthSleep := 0
 
 	for _, imageService := range *q.imageClassifierSevices {
 		go q.subRoutine(ctx, ch, imageService)
@@ -57,19 +69,28 @@ func (q *ImageQueue) mainRoutine(ctx *context.Context) {
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-(*ctx).Done():
+			return
+		default:
 			images, err := q.DB.PopImageQueues(maxChannelN)
 			// fatal error, need alert
 			if err != nil {
-				fmt.Printf("[%s] Image Queue Error: %s\n", time.Now().String(), err.Error())
+				q.logger.Error(err.Error(), zap.String("worker", "master"))
 				break
 			}
-			fmt.Printf("[%s] Image Queue Event: query %d images, publish to limited queue\n", time.Now().Format("2006/01/02 - 15:04:05"), len(*images))
+			q.logger.Info(fmt.Sprintf("query %d images", len(*images)), zap.String("worker", "master"), zap.String("event", "query"))
+			if len(*images) == 0 {
+				ntimes := 1 << nthSleep
+				q.logger.Info(fmt.Sprintf("query sleep for %d(s), %d(th) sleep", nSecond*ntimes, nthSleep), zap.String("worker", "master"), zap.String("event", "query"))
+				time.Sleep(q.Duration * time.Duration(ntimes))
+				if nthSleep < 4 {
+					nthSleep += 1
+				}
+				break
+			}
 			for _, image := range *images {
 				ch <- &image
 			}
-		case <-(*ctx).Done():
-			return
 		}
 	}
 }
@@ -83,28 +104,28 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 			imageBytes, err := q.getImageAsByte(&image.UUID)
 			if err != nil {
 				// log get image failed, err, need to trace in 10 hours
-				fmt.Println(err)
+				q.logger.Error(fmt.Sprintf("read file (%s): %s", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "file"))
 				if err := q.DB.RecoverImageQueue(image.ID); err != nil {
 					// log recover failed, err
-					fmt.Println("warning") // TODO: change to log
+					q.logger.Error(fmt.Sprintf("recover queue (%s): %s", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "recover"))
 				}
 				break
 			}
 			reply, err := (*service.Client).ClassifyImage(*ctx, &rpc_protocol.ImageClassifierRequest{Image: *imageBytes})
 			if err != nil {
 				// log rpc server works bad, critical err
-				fmt.Println(err)
+				q.logger.Error(fmt.Sprintf("rpc error (%s): %s", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "rpc"))
 				if err := q.DB.RecoverImageQueue(image.ID); err != nil {
 					// log recover failed, err
-					fmt.Println("warning") // TODO: change to log
+					q.logger.Error(fmt.Sprintf("recover queue (%s): %s", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "recover")) // TODO: change to log
 				}
 				break
 			}
 			if err := q.DB.DeleteImageQueues(image.ID); err != nil {
-				// log delete permanent error
-				fmt.Println("delete data error") // TODO: change to log
+				// log delete permanent error, but context goes, no break
+				q.logger.Error(fmt.Sprintf("delete queue (%s): %s, but process goes", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "delete"))
 			}
-			fmt.Printf("[%s] Image Sub: classify image result: %d\n", time.Now().Format("2006/01/02 - 15:04:05"), reply.ClassIndex)
+			q.logger.Info(fmt.Sprintf("rpc (%s): (%d)", image.UUID, reply.ClassIndex), zap.String("worker", "slave"), zap.String("event", "rpc"))
 			// move to external storage
 			// pub, classify event to subs
 			// ...
@@ -113,7 +134,7 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 			err = q.RemoveImageFile(&image.UUID)
 			if err != nil {
 				// log this, not fatal, warning
-				fmt.Printf("Remove image file error %s\n", err.Error()) // TODO: chane to log
+				q.logger.Error(fmt.Sprintf("remove file (%s): %s, but process goes", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "file")) // TODO: chane to log
 			}
 		}
 	}
