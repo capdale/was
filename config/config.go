@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Service Service `yaml:"service"`
+	Queue   Queue   `yaml:"queue"`
 	Mysql   Mysql   `yaml:"mysql"`
 	Redis   Redis   `yaml:"redis"`
 	Rpc     Rpc     `yaml:"rpc"`
@@ -35,10 +36,19 @@ type Cors struct {
 }
 
 type Log struct {
-	Path      string `yaml:"path"`
-	MaxSize   int    `yaml:"MaxSize"`
-	LocalTime bool   `yaml:"localitme"`
-	Compress  bool   `yaml:"compress"`
+	Path       string `yaml:"path"`
+	MaxSize    int    `yaml:"maxSize"`
+	MaxBackups int    `yaml:"maxBackups"`
+	MaxAge     int    `yaml:"maxAge"`
+	Console    bool   `yaml:"console"`
+}
+
+type Queue struct {
+	ImageQueue ImageQueue `yaml:"imageQueue"`
+}
+
+type ImageQueue struct {
+	Log Log `yaml:"log"`
 }
 
 type Mysql struct {
