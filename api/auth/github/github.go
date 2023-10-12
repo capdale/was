@@ -109,10 +109,8 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 		return
 	}
 
-	tokenString, err := g.Auth.GenerateToken(&auth.AuthPayload{
-		UserUUID: user.UUID,
-		Username: user.Username,
-	})
+	claims := g.Auth.GenerateClaim(&user.UUID)
+	tokenString, err := g.Auth.GenerateToken(claims)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
@@ -120,7 +118,7 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Set("X-MD-Token", tokenString)
+	ctx.Header("X-MD-Token", tokenString)
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "ok",
 		"token":   tokenString,
