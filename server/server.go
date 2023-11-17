@@ -14,6 +14,7 @@ import (
 	"github.com/capdale/was/logger"
 	imagequeue "github.com/capdale/was/queue/image_queue"
 	rpcclient "github.com/capdale/was/rpc"
+	"github.com/capdale/was/s3"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -85,6 +86,11 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		return nil, nil, err
 	}
 
+	s3, err := s3.New(&config.S3)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	auth := auth.New(d, store)
 
 	r.GET("/", func(ctx *gin.Context) {
@@ -120,7 +126,7 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 	}
 
 	imageQueueCTX := context.Background()
-	imageQueue := imagequeue.New(d, time.Duration(time.Second*10), rpcClient.ImageClassifies, isProduction, &config.Queue.ImageQueue)
+	imageQueue := imagequeue.New(d, time.Duration(time.Second*10), rpcClient.ImageClassifies, isProduction, &config.Queue.ImageQueue, s3)
 	imageQueue.Run(&imageQueueCTX)
 
 	return r, &RouterOpened{
