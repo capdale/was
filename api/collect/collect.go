@@ -4,15 +4,18 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
 
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/location"
+	"github.com/capdale/was/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type database interface {
 	PutInImageQueue(userUUID *uuid.UUID, fileUUID *uuid.UUID, geoLocation *location.GeoLocation) error
+	GetCollectection(userUUID *uuid.UUID, offset int, limit int) (*[]model.Collection, error)
 }
 
 type CollectAPI struct {
@@ -25,10 +28,55 @@ func New(database database) *CollectAPI {
 	}
 }
 
+type GetCollectionReq struct {
+	Offset *int `json:"offset" binding:"required"`
+	Limit  *int `json:"limit" binding:"required"`
+}
+
+type GetCollectionRes struct {
+	Collections *[]*Collections `json:"collections"`
+}
+
+type Collections struct {
+	UUID            uuid.UUID `json:"uuid"`
+	CollectionIndex int64     `json:"index"`
+	Longtitude      float64   `json:"long"`
+	Latitude        float64   `json:"lat"`
+	Altitude        float64   `json:"alt"`
+	OriginAt        time.Time `json:"origin_at"`
+}
+
 func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"collection": "",
-	})
+	var req GetCollectionReq
+	err := ctx.ShouldBind(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	collections, err := a.DB.GetCollectection(&claims.UserUUID, *req.Offset, *req.Limit)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+	res := &GetCollectionRes{
+		Collections: &[]*Collections{},
+	}
+	for _, collection := range *collections {
+		(*res.Collections) = append((*res.Collections), &Collections{
+			UUID:            collection.UUID,
+			CollectionIndex: collection.CollectionIndex,
+			Longtitude:      collection.Longtitude,
+			Latitude:        collection.Latitude,
+			Altitude:        collection.Altitude,
+			OriginAt:        collection.OriginAt,
+		})
+	}
+	ctx.JSON(http.StatusOK, res)
 }
 
 func (a *CollectAPI) PostCollectHandler(ctx *gin.Context) {
