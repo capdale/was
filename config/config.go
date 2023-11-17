@@ -14,6 +14,7 @@ type Config struct {
 	Rpc     Rpc     `yaml:"rpc"`
 	Key     Key     `yaml:"key"`
 	Oauth   Oauth   `yaml:"oauth"`
+	S3      S3      `yaml:"s3"`
 }
 
 type Service struct {
@@ -85,6 +86,13 @@ type Github struct {
 	Id       string `yaml:"id"`
 	Secret   string `yaml:"secret"`
 	Redirect string `yaml:"redirect"`
+}
+
+type S3 struct {
+	Name   string `yaml:"bucketName"`
+	Region string `yaml:"region"`
+	Id     string `yaml:"id"`
+	Key    string `yaml:"key"`
 }
 
 func ParseConfig(filepath string) (c *Config, err error) {
