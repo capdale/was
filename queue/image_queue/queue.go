@@ -14,6 +14,7 @@ import (
 	"github.com/capdale/was/model"
 	rpcservice "github.com/capdale/was/rpc"
 	rpc_protocol "github.com/capdale/was/rpc/proto"
+	"github.com/capdale/was/s3"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -23,6 +24,7 @@ type database interface {
 	PopImageQueues(n int) (*[]model.ImageQueue, error)
 	RecoverImageQueue(index uint) error
 	DeleteImageQueues(index uint) error
+	PutCollectionFromImageQueue(m *model.ImageQueue, index int64) error
 }
 
 type ImageQueue struct {
@@ -30,12 +32,13 @@ type ImageQueue struct {
 	Duration               time.Duration
 	DB                     database
 	imageClassifierSevices *[]*rpcservice.ImageClassify
+	S3                     *s3.BasicBucket
 	once                   sync.Once
 }
 
 // change to imageSub (divide)
 
-func New(d database, t time.Duration, imageClassifierSevices *[]*rpcservice.ImageClassify, isProduction bool, config *config.ImageQueue) *ImageQueue {
+func New(d database, t time.Duration, imageClassifierSevices *[]*rpcservice.ImageClassify, isProduction bool, config *config.ImageQueue, s3 *s3.BasicBucket) *ImageQueue {
 	queueLogger := logger.New(&lumberjack.Logger{
 		Filename:   config.Log.Path,
 		MaxSize:    config.Log.MaxSize,
@@ -47,6 +50,7 @@ func New(d database, t time.Duration, imageClassifierSevices *[]*rpcservice.Imag
 		Duration:               t,
 		DB:                     d,
 		imageClassifierSevices: imageClassifierSevices,
+		S3:                     s3,
 	}
 }
 
@@ -121,15 +125,25 @@ func (q *ImageQueue) subRoutine(ctx *context.Context, ch chan *model.ImageQueue,
 				}
 				break
 			}
+
+			q.logger.Info(fmt.Sprintf("rpc (%s): (%d)", image.UUID, reply.ClassIndex), zap.String("worker", "slave"), zap.String("event", "rpc"))
+
+			err = q.S3.Upload(image.UUID.String(), imageBytes)
+			if err != nil {
+				if err := q.DB.RecoverImageQueue(image.ID); err != nil {
+					// log recover failed, err
+					q.logger.Error(fmt.Sprintf("recover queue (%s): %s", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "recover")) // TODO: change to log
+				}
+			}
+			err = q.DB.PutCollectionFromImageQueue(image, reply.ClassIndex)
+			if err != nil {
+				q.logger.Error(fmt.Sprintf("Put Collection error (%s): %s, but process goes", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "collection"))
+			}
+
 			if err := q.DB.DeleteImageQueues(image.ID); err != nil {
 				// log delete permanent error, but context goes, no break
 				q.logger.Error(fmt.Sprintf("delete queue (%s): %s, but process goes", &image.UUID, err.Error()), zap.String("worker", "slave"), zap.String("event", "delete"))
 			}
-			q.logger.Info(fmt.Sprintf("rpc (%s): (%d)", image.UUID, reply.ClassIndex), zap.String("worker", "slave"), zap.String("event", "rpc"))
-			// move to external storage
-			// pub, classify event to subs
-			// ...
-
 			// final task, remove file from storage
 			err = q.RemoveImageFile(&image.UUID)
 			if err != nil {
