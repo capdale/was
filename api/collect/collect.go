@@ -29,8 +29,8 @@ func New(database database) *CollectAPI {
 }
 
 type GetCollectionReq struct {
-	Offset *int `json:"offset" binding:"required"`
-	Limit  *int `json:"limit" binding:"required"`
+	Offset *int `json:"offset" form:"offset" binding:"required"`
+	Limit  *int `json:"limit" form:"limit" binding:"required"`
 }
 
 type GetCollectionRes struct {
