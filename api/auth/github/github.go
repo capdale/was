@@ -38,6 +38,7 @@ func New(database database, auth *auth.Auth, oauthConfig *oauth2.Config) *Github
 }
 
 func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
+
 	session := sessions.Default(ctx)
 	session.Options(sessions.Options{
 		Path:   "/auth",
@@ -46,23 +47,27 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 	state := auth.RandToken()
 	session.Set("state", state)
 	session.Save()
+	if ctx.Query("type") == "json" {
+		ctx.JSON(http.StatusOK, gin.H{"url": g.OAuthConfig.AuthCodeURL(state)})
+		return
+	}
 	ctx.Redirect(http.StatusFound, g.OAuthConfig.AuthCodeURL(state))
 }
 
 func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	err := authapi.CheckState(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, authapi.AccessDenied)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
 		return
 	}
 
 	token, err := g.OAuthConfig.Exchange(ctx.Request.Context(), ctx.Query("code"))
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, authapi.AccessDenied)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
 		return
 	}
 	if !token.Valid() {
-		ctx.JSON(http.StatusUnauthorized, authapi.AccessDenied)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
 		return
 	}
 

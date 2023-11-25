@@ -2,7 +2,6 @@ package authapi
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -41,9 +40,8 @@ func New(database database, auth *auth.Auth) *AuthAPI {
 func CheckState(ctx *gin.Context) error {
 	session := sessions.Default(ctx)
 	state := session.Get("state")
-	fmt.Println(state)
 	if state == nil {
-		return errors.New("asdf")
+		return errors.New("state not found")
 	}
 	session.Clear()
 	return nil
