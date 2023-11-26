@@ -39,7 +39,7 @@ func (d *Database) PopImageQueues(n int) (*[]model.ImageQueue, error) {
 }
 
 func (d *Database) RecoverImageQueue(index uint) error {
-	return d.DB.Model(&model.ImageQueue{ID: 1}).Update("deleted_at", nil).Error
+	return d.DB.Unscoped().Model(&model.ImageQueue{}).Where("id = ?", index).Update("deleted_at", nil).Error
 }
 
 func (d *Database) DeleteImageQueues(index uint) error {
