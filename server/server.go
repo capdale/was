@@ -12,6 +12,7 @@ import (
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
 	"github.com/capdale/was/logger"
+	"github.com/capdale/was/queue"
 	imagequeue "github.com/capdale/was/queue/image_queue"
 	rpcclient "github.com/capdale/was/rpc"
 	"github.com/capdale/was/s3"
@@ -27,13 +28,15 @@ import (
 )
 
 type RouterOpened struct {
-	Rpc *rpcclient.RpcService
+	Rpc   *rpcclient.RpcService
+	Queue *queue.MessageQueue
 }
 
 func (r *RouterOpened) Close() {
 	for _, service := range *r.Rpc.ImageClassifies {
 		service.Conn.Close()
 	}
+	r.Queue.Close()
 }
 
 func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
@@ -86,6 +89,11 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		return nil, nil, err
 	}
 
+	mq, err := queue.New(&config.Queue)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	s3, err := s3.New(&config.S3)
 	if err != nil {
 		return nil, nil, err
@@ -126,10 +134,11 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 	}
 
 	imageQueueCTX := context.Background()
-	imageQueue := imagequeue.New(d, time.Duration(time.Second*10), rpcClient.ImageClassifies, isProduction, &config.Queue.ImageQueue, s3)
+	imageQueue := imagequeue.New(d, time.Duration(time.Second*3), rpcClient.ImageClassifies, isProduction, &config.Queue.ImageQueue, s3)
 	imageQueue.Run(&imageQueueCTX)
 
 	return r, &RouterOpened{
-		Rpc: rpcClient,
+		Rpc:   rpcClient,
+		Queue: mq,
 	}, nil
 }

@@ -87,7 +87,7 @@ func (q *ImageQueue) mainRoutine(ctx *context.Context) {
 				ntimes := 1 << nthSleep
 				q.logger.Info(fmt.Sprintf("query sleep for %d(s), %d(th) sleep", nSecond*ntimes, nthSleep), zap.String("worker", "master"), zap.String("event", "query"))
 				time.Sleep(q.Duration * time.Duration(ntimes))
-				if nthSleep < 4 {
+				if nthSleep < 1 {
 					nthSleep += 1
 				}
 				break
