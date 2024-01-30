@@ -1,6 +1,7 @@
 package githubAuth
 
 import (
+	"encoding/base64"
 	"net/http"
 
 	authapi "github.com/capdale/was/api/auth"
@@ -8,7 +9,6 @@ import (
 	"github.com/capdale/was/model"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
@@ -20,7 +20,7 @@ const (
 
 type database interface {
 	GetUserByEmail(email string) (*model.User, error)
-	CreateSocial(user *model.User) error
+	CreateWithGithub(username string, email string) (*model.User, error)
 }
 
 type GithubAuth struct {
@@ -44,7 +44,7 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 		Path:   "/auth",
 		MaxAge: 900,
 	})
-	state := auth.RandToken()
+	state := auth.RandToken(32)
 	session.Set("state", state)
 	session.Save()
 	if ctx.Query("type") == "json" {
@@ -114,8 +114,9 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := g.Auth.GenerateClaim(&user.UUID)
-	tokenString, err := g.Auth.GenerateToken(claims)
+	userAgent := ctx.Request.UserAgent()
+
+	tokenString, refreshToken, err := g.Auth.IssueTokenByUUID(&user.UUID, &userAgent)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
@@ -123,27 +124,14 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("X-MD-Token", tokenString)
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "ok",
-		"token":   tokenString,
+		"access_token":  tokenString,
+		"refresh_token": base64.StdEncoding.EncodeToString(*refreshToken),
 	})
 }
 
 func (g *GithubAuth) createSocial(username string, email string) (user *model.User, err error) {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		return
-	}
-
-	user = &model.User{
-		Username:    username,
-		AccountType: 0,
-		UUID:        uuid,
-		Email:       email,
-	}
-
-	err = g.DB.CreateSocial(user)
+	user, err = g.DB.CreateWithGithub(username, email)
 	return
 }
 
