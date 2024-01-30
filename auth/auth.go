@@ -3,10 +3,15 @@ package auth
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/capdale/was/model"
+	"github.com/google/uuid"
 )
 
 type database interface {
+	SaveToken(userUUID *uuid.UUID, tokenString string, refreshToken *[]byte, agent *string) error
+	IfTokenExistRemoveElseErr(tokenString string, until time.Duration, blackToken func(string, time.Duration) error) error
+	PopTokenByRefreshToken(refreshToken *[]byte, transactionF func(string) error) (tokenString *string, err error)
+	QueryAllTokensByUserUUID(userUUID *uuid.UUID) (*[]*model.Token, error)
 }
 
 type store interface {
@@ -25,21 +30,4 @@ func New(database database, store store) *Auth {
 		DB:    database,
 		Store: store,
 	}
-}
-
-func (a *Auth) tokenFromCTX(ctx *gin.Context) string {
-	if token := a.tokenFromXToken(ctx); token != "" {
-		return token
-	} else if token := a.tokenFromQuery(ctx); token != "" {
-		return token
-	}
-	return ""
-}
-
-func (a *Auth) tokenFromQuery(ctx *gin.Context) string {
-	return ctx.Request.URL.Query().Get("token")
-}
-
-func (a *Auth) tokenFromXToken(ctx *gin.Context) string {
-	return ctx.Request.Header.Get("X-MD-Token")
 }
