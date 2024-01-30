@@ -8,7 +8,6 @@ import (
 
 type Config struct {
 	Service Service `yaml:"service"`
-	Queue   Queue   `yaml:"queue"`
 	Mysql   Mysql   `yaml:"mysql"`
 	Redis   Redis   `yaml:"redis"`
 	Rpc     Rpc     `yaml:"rpc"`
@@ -42,14 +41,6 @@ type Log struct {
 	MaxBackups int    `yaml:"maxBackups"`
 	MaxAge     int    `yaml:"maxAge"`
 	Console    bool   `yaml:"console"`
-}
-
-type Queue struct {
-	ImageQueue ImageQueue `yaml:"imageQueue"`
-}
-
-type ImageQueue struct {
-	Log Log `yaml:"log"`
 }
 
 type Mysql struct {
