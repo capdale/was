@@ -8,10 +8,10 @@ import (
 
 func (a *Auth) AuthorizeRequiredMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		tokenString := a.tokenFromCTX(ctx)
-		if tokenString == "" {
+		tokenString, err := TokenFromRequest(ctx.Request)
+		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"message": "no x-token",
+				"message": "invalid request",
 			})
 			return
 		}
@@ -21,6 +21,26 @@ func (a *Auth) AuthorizeRequiredMiddleware() gin.HandlerFunc {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"message": "invalid token",
 			})
+			return
+		}
+
+		ctx.Set("token", tokenString)
+		ctx.Set("claims", claims)
+		ctx.Next()
+	}
+}
+
+func (a *Auth) AuthorizeOptionalMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		tokenString, err := TokenFromRequest(ctx.Request)
+		if err != nil || tokenString == "" {
+			ctx.Next()
+			return
+		}
+
+		claims, err := a.ValidateToken(tokenString)
+		if err != nil {
+			ctx.Next() // consider
 			return
 		}
 
