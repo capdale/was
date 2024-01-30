@@ -2,7 +2,6 @@ package auth
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"math/big"
 )
 
@@ -23,8 +22,8 @@ func GenerateRandomString(n int) (string, error) {
 	return string(ret), nil
 }
 
-func RandToken(n int) string {
+func RandToken(n int) (*[]byte, error) {
 	b := make([]byte, n)
-	rand.Read(b)
-	return base64.StdEncoding.EncodeToString(b)
+	_, err := rand.Read(b)
+	return &b, err
 }

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -45,14 +46,21 @@ func (a *Auth) IssueTokenByUUID(userUUID *uuid.UUID, agent *string) (tokenString
 }
 
 func (a *Auth) generateRefreshToken() (*[]byte, error) {
+	refreshToken := make([]byte, 64)
 	randomUUID, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
-	refreshToken, err := randomUUID.MarshalBinary()
+	randBackBytes, err := randomUUID.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
+	randFrontBytes, err := RandToken(48)
+	if err != nil {
+		return nil, err
+	}
+	refreshToken = append(*randFrontBytes, randBackBytes...)
+	fmt.Println(len(refreshToken))
 	return &refreshToken, nil
 }
 
