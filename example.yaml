@@ -9,7 +9,6 @@ service:
       - PUT
       - POST
     allowHeaders:
-      - X-MD-Token
     allowCredentials: true
     exposeHeaders:
 
@@ -25,15 +24,6 @@ service:
     maxAge: 30
     console: true
 
-queue:
-  imageQueue:
-    log:
-      path: ./logs/image_queue.log
-      maxSize: 10
-      maxBackups: 3
-      maxAge: 30
-      console: true
-
 mysql:
   username: root
   password: password
@@ -44,11 +34,6 @@ redis:
   address: localhost:6379
   password: ""
   db: 0
-
-rpc:
-  imageClassify:
-    address:
-      - localhost:50050
 
 key:
   jwtkey: jwtkey
