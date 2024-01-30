@@ -6,24 +6,25 @@ import (
 	"math/big"
 )
 
-const validLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890"
+const validLetters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 
 var tokenLength = big.NewInt(int64(len(validLetters)))
 
-func createRandomToken() (string, error) {
-	bytes := make([]byte, 20)
-	for i := range bytes {
+func GenerateRandomString(n int) (string, error) {
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
 		num, err := rand.Int(rand.Reader, tokenLength)
 		if err != nil {
 			return "", err
 		}
-		bytes[i] = validLetters[num.Int64()]
+		ret[i] = validLetters[num.Int64()]
 	}
-	return string(bytes), nil
+
+	return string(ret), nil
 }
 
-func RandToken() string {
-	b := make([]byte, 32)
+func RandToken(n int) string {
+	b := make([]byte, n)
 	rand.Read(b)
 	return base64.StdEncoding.EncodeToString(b)
 }
