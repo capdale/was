@@ -44,7 +44,14 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 		Path:   "/auth",
 		MaxAge: 900,
 	})
-	state := auth.RandToken(32)
+	rand32, err := auth.RandToken(32)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": "internal server error",
+		})
+		return
+	}
+	state := base64.StdEncoding.EncodeToString(*rand32)
 	session.Set("state", state)
 	session.Save()
 	if ctx.Query("type") == "json" {
