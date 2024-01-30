@@ -9,7 +9,7 @@ import (
 type User struct {
 	Username    string
 	AccountType int
-	UUID        uuid.UUID `gorm:"type:varchar(36);uniqueIndex;not null"`
+	UUID        uuid.UUID `gorm:"type:varchar(36);uniqueIndex:uuid;not null"`
 	Email       string    `gorm:"size:64;uniqueIndex;not null"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdateAt    time.Time `gorm:"autoUpdateTime"`
@@ -20,7 +20,7 @@ type Token struct {
 	ID           []byte    `gorm:"type:binary(16);primaryKey"`
 	UserUUID     uuid.UUID `gorm:"type:varchar(36);index:user_uuid;not null"`
 	Token        string    `gorm:"type:varchar(225);not null"` // need type tuning
-	RefreshToken []byte    `gorm:"type:binary(16);index:refresh_token"`
+	RefreshToken []byte    `gorm:"type:binary(64);index:refresh_token"`
 	UserAgent    string    `gorm:"type:varchar(225)"`
 	ExpireAt     time.Time
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
