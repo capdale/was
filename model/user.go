@@ -17,8 +17,11 @@ type User struct {
 
 type Token struct {
 	// this token is same as jwt token, write when token generated, delete when token blacklist, query when refresh request comes in
-	UUID      uuid.UUID `gorm:"type:varchar(36);uniqueIndex;not null"`
-	Token     string    `gorm:"type:varchar(100);not null"` // need type tuning
-	ExpireAt  time.Time `gorm:"index;,sort:desc"`
-	CreatedAt time.Time `gorm:"autoCreateTime"`
+	ID           []byte    `gorm:"type:binary(16);primaryKey"`
+	UserUUID     uuid.UUID `gorm:"type:varchar(36);index:user_uuid;not null"`
+	Token        string    `gorm:"type:varchar(225);not null"` // need type tuning
+	RefreshToken []byte    `gorm:"type:binary(16);index:refresh_token"`
+	UserAgent    string    `gorm:"type:varchar(225)"`
+	ExpireAt     time.Time
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
 }
