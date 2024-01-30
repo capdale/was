@@ -1,6 +1,7 @@
 package authapi
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"time"
@@ -16,6 +17,10 @@ type database interface {
 type AuthAPI struct {
 	DB   database
 	Auth *auth.Auth
+}
+
+type RefreshTokenReq struct {
+	RefreshToken []byte `json:"refresh_token" binding:"required"`
 }
 
 var (
@@ -50,6 +55,7 @@ func CheckState(ctx *gin.Context) error {
 func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	tokenString := ctx.MustGet("token").(string)
+	a.Auth.SetBlacklistByToken(claims)
 	err := a.Auth.Store.SetBlacklist(tokenString, time.Until(claims.ExpiresAt.Time))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -59,5 +65,28 @@ func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "ok",
+	})
+}
+
+func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
+	var body RefreshTokenReq
+	err := ctx.ShouldBind(&body)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+	userAgent := ctx.Request.UserAgent()
+	newToken, refreshToken, err := a.Auth.RefreshToken(&body.RefreshToken, &userAgent)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"access_token":  newToken,
+		"refresh_token": base64.StdEncoding.EncodeToString(*refreshToken),
 	})
 }
