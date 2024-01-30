@@ -1,20 +1,16 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	authapi "github.com/capdale/was/api/auth"
 	githubAuth "github.com/capdale/was/api/auth/github"
-	"github.com/capdale/was/api/collect"
+	collect "github.com/capdale/was/api/collection"
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
 	"github.com/capdale/was/logger"
-	imagequeue "github.com/capdale/was/queue/image_queue"
-	rpcclient "github.com/capdale/was/rpc"
-	"github.com/capdale/was/s3"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -26,20 +22,8 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-type RouterOpened struct {
-	Rpc *rpcclient.RpcService
-	// Queue *queue.MessageQueue
-}
-
-func (r *RouterOpened) Close() {
-	for _, service := range *r.Rpc.ImageClassifies {
-		service.Conn.Close()
-	}
-	// r.Queue.Close()
-}
-
-func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
-	r := gin.New()
+func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
+	r = gin.New()
 
 	isProduction := gin.Mode() == gin.ReleaseMode
 
@@ -68,56 +52,49 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		},
 	))
 
-	rpcClient, err := rpcclient.New(&config.Rpc)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	d, err := database.New(&config.Mysql)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	store, err := store.New(&config.Redis)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte(config.Key.SessionStateKey))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// mq, err := queue.New(&config.Queue)
+	// s3, err := s3.New(&config.S3)
 	// if err != nil {
-	// 	return nil, nil, err
+	// 	return
 	// }
-
-	s3, err := s3.New(&config.S3)
-	if err != nil {
-		return nil, nil, err
-	}
+	// print(s3) // declare
 
 	auth := auth.New(d, store)
 
 	r.GET("/", func(ctx *gin.Context) {
-		ctx.AbortWithStatusJSON(http.StatusOK, gin.H{
+		ctx.JSON(http.StatusOK, gin.H{
 			"ok": "ok",
 		})
 	})
 
 	collectAPI := collect.New(d)
 
-	collectRouter := r.Group("/collect").Use(auth.AuthorizeRequiredMiddleware())
+	collectRouter := r.Group("/collection").Use(auth.AuthorizeRequiredMiddleware())
 	{
-		collectRouter.GET("/", collectAPI.GetCollectection)
-		collectRouter.POST("/", collectAPI.PostCollectHandler)
+		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
+		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.PostCollection)
+		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
 	}
 
 	authAPI := authapi.New(d, auth)
 	authRouter := r.Group("/auth")
 	{
-		r.Use(auth.AuthorizeRequiredMiddleware()).POST("/blacklist", authAPI.SetBlacklistHandler)
+		authRouter.POST("/blacklist", auth.AuthorizeRequiredMiddleware(), authAPI.SetBlacklistHandler)
+		authRouter.POST("/refresh", authAPI.RefreshTokenHandler)
 		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
 			ClientID:     config.Oauth.Github.Id,
 			ClientSecret: config.Oauth.Github.Secret,
@@ -132,12 +109,5 @@ func SetupRouter(config *config.Config) (*gin.Engine, *RouterOpened, error) {
 		}
 	}
 
-	imageQueueCTX := context.Background()
-	imageQueue := imagequeue.New(d, time.Duration(time.Second*3), rpcClient.ImageClassifies, isProduction, &config.Queue.ImageQueue, s3)
-	imageQueue.Run(&imageQueueCTX)
-
-	return r, &RouterOpened{
-		Rpc: rpcClient,
-		// Queue: mq,
-	}, nil
+	return r, nil
 }
