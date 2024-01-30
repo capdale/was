@@ -19,7 +19,7 @@ func main() {
 		panic(err)
 	}
 
-	r, c, err := server.SetupRouter(config)
+	r, err := server.SetupRouter(config)
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +30,6 @@ func main() {
 	}
 
 	go func() {
-		defer c.Close()
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
