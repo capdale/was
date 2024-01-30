@@ -14,26 +14,66 @@ type AuthClaims struct {
 }
 
 var (
-	ErrTokenInvalid   = errors.New("token is invalid")
-	ErrTypeParse      = errors.New("fail parse custom claim")
-	ErrTokenBlacklist = errors.New("token is blacklist")
+	ErrTokenInvalid       = errors.New("token is invalid")
+	ErrTypeParse          = errors.New("fail parse custom claim")
+	ErrTokenBlacklist     = errors.New("token is blacklist")
+	ErrTokenNotExpiredYet = errors.New("token not expired yet")
 )
 
 func (a *AuthClaims) isExpired() bool {
 	return time.Until(a.ExpiresAt.Time) < 0
 }
 
-func (a *Auth) GenerateClaim(userUUID *uuid.UUID) *AuthClaims {
+func (a *Auth) IssueTokenByUUID(userUUID *uuid.UUID, agent *string) (tokenString string, refreshToken *[]byte, err error) {
+	// this function manage all secure process, store refresh token in db, validate token etc
+	claims, err := a.generateClaim(userUUID)
+	if err != nil {
+		return
+	}
+	tokenString, err = a.generateToken(claims)
+	if err != nil {
+		return
+	}
+	refreshToken, err = a.generateRefreshToken()
+	if err != nil {
+		return
+	}
+	if err = a.DB.SaveToken(&claims.UserUUID, tokenString, refreshToken, agent); err != nil {
+		return
+	}
+	return
+}
+
+func (a *Auth) generateRefreshToken() (*[]byte, error) {
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	refreshToken, err := randomUUID.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return &refreshToken, nil
+}
+
+func (a *Auth) generateClaim(userUUID *uuid.UUID) (c *AuthClaims, err error) {
 	expirationTime := time.Now().Add(time.Hour)
-	return &AuthClaims{
+	tokenUID, err := uuid.NewRandom()
+	if err != nil {
+		return
+	}
+
+	c = &AuthClaims{
 		UserUUID: *userUUID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			ID:        tokenUID.String(),
 		},
 	}
+	return
 }
 
-func (a *Auth) GenerateToken(claims *AuthClaims) (string, error) {
+func (a *Auth) generateToken(claims *AuthClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString(a.secret)
 	if err != nil {
@@ -52,11 +92,6 @@ func (a *Auth) ParseToken(tokenString string) (claims *AuthClaims, err error) {
 	if !token.Valid {
 		return nil, ErrTokenInvalid
 	}
-
-	if claims.isExpired() {
-		return claims, jwt.ErrTokenExpired
-	}
-
 	return
 }
 
@@ -65,7 +100,9 @@ func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if claims.isExpired() {
+		return nil, jwt.ErrTokenExpired
+	}
 	isBlacklist, err := a.IsBlacklist(tokenString)
 	if err != nil {
 		return nil, err
@@ -73,6 +110,39 @@ func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
 	if isBlacklist {
 		return nil, ErrTokenBlacklist
 	}
-
 	return claims, nil
 }
+
+func (a *Auth) RefreshToken(refreshToken *[]byte, agent *string) (newToken string, newRefreshToken *[]byte, err error) {
+	tokenString, err := a.DB.PopTokenByRefreshToken(refreshToken, a.refreshTransaction)
+	if err != nil {
+		return
+	}
+	claims, err := a.ParseToken(*tokenString)
+	if err != nil {
+		return
+	}
+	if !claims.isExpired() {
+		return "", nil, ErrTokenNotExpiredYet
+	}
+	newToken, newRefreshToken, err = a.IssueTokenByUUID(&claims.UserUUID, agent)
+	return
+}
+
+func (a *Auth) refreshTransaction(tokenString string) (err error) {
+	claims, err := a.ParseToken(tokenString)
+	if err != nil {
+		return
+	}
+	if !claims.isExpired() {
+		err = a.Store.SetBlacklist(tokenString, time.Until(claims.ExpiresAt.Time))
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// func (a *Auth) ActiveTokensByUserUUID(userUUID *uuid.UUID) (*[]string, error) {
+// 	return a.DB.QueryAllTokensByUserUUID(userUUID)
+// }
