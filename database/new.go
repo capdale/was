@@ -10,11 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type Database struct {
+type DB struct {
 	DB *gorm.DB
 }
 
-func New(mysqlConfig *config.Mysql) (db *Database, err error) {
+func New(mysqlConfig *config.Mysql) (db *DB, err error) {
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/was?charset=utf8mb4&parseTime=True&loc=Local",
 		mysqlConfig.Username,
@@ -37,7 +37,7 @@ func New(mysqlConfig *config.Mysql) (db *Database, err error) {
 	sqldb.SetMaxOpenConns(0)
 	sqldb.SetConnMaxLifetime(time.Minute * 3)
 
-	db = &Database{
+	db = &DB{
 		DB: d,
 	}
 	err = db.AutoMigrate()
@@ -45,11 +45,10 @@ func New(mysqlConfig *config.Mysql) (db *Database, err error) {
 	return
 }
 
-func (d *Database) AutoMigrate() (err error) {
+func (d *DB) AutoMigrate() (err error) {
 	err = d.DB.AutoMigrate(
-		&model.User{},
+		&model.User{}, &model.Token{},
 		&model.Collection{},
-		&model.ImageQueue{},
 	)
 	return err
 }
