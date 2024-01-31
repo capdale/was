@@ -19,18 +19,18 @@ func isValidImageFromFile(m *multipart.FileHeader) error {
 }
 
 func isValidImage(r io.Reader) error {
-	img, err := jpeg.DecodeConfig(r)
+	_, err := jpeg.DecodeConfig(r)
 	if err != nil {
 		return err
 	}
-	if img.Height > 3000 && img.Height < 1080 {
-		return ErrImageInValid
-	}
-	if img.Width > 3000 && img.Width < 1080 {
-		return ErrImageInValid
-	}
-	if img.Height != img.Width {
-		return ErrImageInValid
-	}
+	// if img.Height > 3000 && img.Height < 1080 {
+	// 	return ErrImageInValid
+	// }
+	// if img.Width > 3000 && img.Width < 1080 {
+	// 	return ErrImageInValid
+	// }
+	// if img.Height != img.Width {
+	// 	return ErrImageInValid
+	// }
 	return nil
 }

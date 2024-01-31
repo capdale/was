@@ -11,7 +11,7 @@ import (
 )
 
 type database interface {
-	GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]Collection, error)
+	GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]uuid.UUID, error)
 	GetCollectionByUUID(collectionUUID *uuid.UUID) (*Collection, error)
 	CreateCollectionWithUserUUID(collection *Collection, userUUID *uuid.UUID) (collectionUUID *uuid.UUID, err error)
 }
@@ -32,15 +32,12 @@ type GetCollectionReq struct {
 }
 
 type GetCollectionRes struct {
-	Collections []Collection `json:"collections"`
+	Collections []uuid.UUID `json:"collections"`
 }
 
 type PostCollectionReq struct {
 	ImageFile *multipart.FileHeader `form:"image" binding:"required"`
 	Info      Collection            `form:"info" binding:"required"`
-}
-type GetCollectionByUUIDReq struct {
-	CollectionUUID *uuid.UUID `json:"uuid" binding:"required"`
 }
 
 type Collection = model.CollectionAPI
@@ -107,18 +104,19 @@ func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 }
 
 func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
-	var req GetCollectionByUUIDReq
-	if err := ctx.ShouldBind(&req); err != nil {
+	uuidParam := ctx.Param("uuid")
+	collectionUUID, err := uuid.Parse(uuidParam)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
+			"message": "bad request form",
 		})
 		return
 	}
 
-	collection, err := a.DB.GetCollectionByUUID(req.CollectionUUID)
+	collection, err := a.DB.GetCollectionByUUID(&collectionUUID)
 	if err != nil {
-		ctx.JSON(http.StatusNoContent, gin.H{
-			"message": err.Error(),
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"message": "no content",
 		})
 		return
 	}
