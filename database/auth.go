@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/capdale/was/model"
@@ -39,10 +38,9 @@ func (d *DB) PopTokenByRefreshToken(refreshToken *[]byte, transactionF func(stri
 		if err = tx.Select("token").Where("refresh_token = ?", refreshToken).Find(t).Error; err != nil {
 			return err
 		}
-		if err = tx.Debug().Select("token").Where("refresh_token = ?", refreshToken).Clauses(clause.Returning{}).Delete(t).Error; err != nil {
+		if err = tx.Select("token").Where("refresh_token = ?", refreshToken).Clauses(clause.Returning{}).Delete(t).Error; err != nil {
 			return err
 		}
-		fmt.Println(t)
 		tokenString = &t.Token
 		return transactionF(t.Token)
 	})
