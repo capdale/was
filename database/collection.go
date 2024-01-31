@@ -5,14 +5,19 @@ import (
 	"github.com/google/uuid"
 )
 
-func (d *DB) GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]model.CollectionAPI, error) {
-	collections := []model.CollectionAPI{}
-	err := d.DB.Where("user_uuid = ?", userUUID.String()).Offset(offset).Limit(limit).Find(&collections).Error
-	return &collections, err
+func (d *DB) GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]uuid.UUID, error) {
+	collections := []model.Collection{}
+	err := d.DB.Select("uuid").Where("user_uuid = ?", userUUID).Offset(offset).Limit(limit).Find(&collections).Error
+	uuids := make([]uuid.UUID, len(collections))
+	for i, collection := range collections {
+		uuids[i] = collection.UUID
+	}
+	return &uuids, err
 }
 
 func (d *DB) GetCollectionByUUID(collectionUUID *uuid.UUID) (collection *model.CollectionAPI, err error) {
-	err = d.DB.Where("uuid = ?", collectionUUID).Find(collection).Error
+	collection = &model.CollectionAPI{}
+	err = d.DB.Model(&model.Collection{}).Where("uuid = ?", collectionUUID).Find(collection).Error
 	return
 }
 
@@ -26,10 +31,7 @@ func (d *DB) CreateCollectionWithUserUUID(collection *model.CollectionAPI, userU
 		UserUUID:        *userUUID,
 		UUID:            uuid,
 		CollectionIndex: collection.CollectionIndex,
-		Longtitude:      collection.Longtitude,
-		Latitude:        collection.Latitude,
-		Altitude:        collection.Altitude,
-		Accuracy:        collection.Accuracy,
+		Geolocation:     collection.Geolocation,
 	}).Error
 	return
 }
