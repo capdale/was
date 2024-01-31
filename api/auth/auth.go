@@ -20,7 +20,7 @@ type AuthAPI struct {
 }
 
 type RefreshTokenReq struct {
-	RefreshToken []byte `json:"refresh_token" binding:"required"`
+	RefreshToken *string `json:"refresh_token" binding:"required"`
 }
 
 var (
@@ -70,15 +70,24 @@ func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 
 func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 	var body RefreshTokenReq
-	err := ctx.ShouldBind(&body)
+	err := ctx.BindJSON(&body)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),
 		})
 		return
 	}
+
 	userAgent := ctx.Request.UserAgent()
-	newToken, refreshToken, err := a.Auth.RefreshToken(&body.RefreshToken, &userAgent)
+	oldRefreshToken, err := base64.StdEncoding.DecodeString(*body.RefreshToken)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	newToken, newRefreshToken, err := a.Auth.RefreshToken(&oldRefreshToken, &userAgent)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"message": err.Error(),
@@ -87,6 +96,6 @@ func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  newToken,
-		"refresh_token": base64.StdEncoding.EncodeToString(*refreshToken),
+		"refresh_token": base64.StdEncoding.EncodeToString(*newRefreshToken),
 	})
 }
