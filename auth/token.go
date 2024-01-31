@@ -65,17 +65,11 @@ func (a *Auth) generateRefreshToken() (*[]byte, error) {
 }
 
 func (a *Auth) generateClaim(userUUID *uuid.UUID) (c *AuthClaims, err error) {
-	expirationTime := time.Now().Add(time.Hour)
-	tokenUID, err := uuid.NewRandom()
-	if err != nil {
-		return
-	}
-
+	expirationTime := time.Now().Add(time.Minute * 30)
 	c = &AuthClaims{
 		UserUUID: *userUUID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
-			ID:        tokenUID.String(),
 		},
 	}
 	return
@@ -92,13 +86,17 @@ func (a *Auth) generateToken(claims *AuthClaims) (string, error) {
 
 func (a *Auth) ParseToken(tokenString string) (claims *AuthClaims, err error) {
 	claims = &AuthClaims{}
-	token, err := jwt.ParseWithClaims("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+tokenString, claims, func(t *jwt.Token) (interface{}, error) { return a.secret, nil })
-	if err != nil {
-		return
-	}
+	_, err = jwt.ParseWithClaims("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+tokenString, claims, func(t *jwt.Token) (interface{}, error) { return a.secret, nil })
+	return
+}
 
-	if !token.Valid {
-		return nil, ErrTokenInvalid
+func (a *Auth) ParseTokenIgnoreExpired(tokenString string) (claims *AuthClaims, err error) {
+	claims, err = a.ParseToken(tokenString)
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) && claims.isExpired() {
+			return claims, nil
+		}
+		return
 	}
 	return
 }
@@ -107,9 +105,6 @@ func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
 	claims, err := a.ParseToken(tokenString)
 	if err != nil {
 		return nil, err
-	}
-	if claims.isExpired() {
-		return nil, jwt.ErrTokenExpired
 	}
 	isBlacklist, err := a.IsBlacklist(tokenString)
 	if err != nil {
@@ -126,19 +121,16 @@ func (a *Auth) RefreshToken(refreshToken *[]byte, agent *string) (newToken strin
 	if err != nil {
 		return
 	}
-	claims, err := a.ParseToken(*tokenString)
+	claims, err := a.ParseTokenIgnoreExpired(*tokenString)
 	if err != nil {
 		return
-	}
-	if !claims.isExpired() {
-		return "", nil, ErrTokenNotExpiredYet
 	}
 	newToken, newRefreshToken, err = a.IssueTokenByUUID(&claims.UserUUID, agent)
 	return
 }
 
 func (a *Auth) refreshTransaction(tokenString string) (err error) {
-	claims, err := a.ParseToken(tokenString)
+	claims, err := a.ParseTokenIgnoreExpired(tokenString)
 	if err != nil {
 		return
 	}
@@ -147,6 +139,7 @@ func (a *Auth) refreshTransaction(tokenString string) (err error) {
 		if err != nil {
 			return
 		}
+		return ErrTokenNotExpiredYet
 	}
 	return
 }
