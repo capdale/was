@@ -7,6 +7,7 @@ import (
 )
 
 type User struct {
+	Id          int64 `gorm:"primaryKey"`
 	Username    string
 	AccountType int
 	UUID        uuid.UUID `gorm:"type:varchar(36);uniqueIndex:uuid;not null"`
