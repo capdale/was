@@ -49,6 +49,7 @@ func (d *DB) AutoMigrate() (err error) {
 	err = d.DB.AutoMigrate(
 		&model.User{}, &model.Token{},
 		&model.Collection{},
+		&model.ReportUser{}, &model.ReportArticle{}, &model.ReportBug{}, &model.ReportHelp{}, &model.ReportEtc{},
 	)
 	return err
 }
