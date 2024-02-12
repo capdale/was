@@ -7,6 +7,7 @@ import (
 	authapi "github.com/capdale/was/api/auth"
 	githubAuth "github.com/capdale/was/api/auth/github"
 	collect "github.com/capdale/was/api/collection"
+	reportAPI "github.com/capdale/was/api/report"
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
@@ -107,6 +108,16 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
 		}
+	}
+
+	reportAPI := reportAPI.New(d)
+	reportRouter := r.Group("/report", auth.AuthorizeOptionalMiddleware()) // anonymous can report too
+	{
+		reportRouter.POST("/user", reportAPI.PostUserReportHandler)
+		reportRouter.POST("/article", reportAPI.PostReportArticleHandler)
+		reportRouter.POST("/bug", reportAPI.PostReportBugHandler)
+		reportRouter.POST("/help", reportAPI.PostReportHelpHandler)
+		reportRouter.POST("/etc", reportAPI.PostReportEtcHandler)
 	}
 
 	return r, nil
