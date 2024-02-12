@@ -46,3 +46,11 @@ func (d *DB) GetUsernameByUUID(uuid string) (*model.User, error) {
 	err := d.DB.Select("username").First(user, "uuid = ?", uuid).Error
 	return user, err
 }
+
+func (d *DB) GetUserIdByUUID(uuid *uuid.UUID) (int64, error) {
+	user := new(model.User)
+	if err := d.DB.Select("id").Where("uuid = ?", uuid).First(user).Error; err != nil {
+		return 0, err
+	}
+	return user.Id, nil
+}
