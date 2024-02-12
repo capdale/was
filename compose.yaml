@@ -3,7 +3,7 @@ services:
     image: "redis:alpine"
     container_name: was_redis
     restart: always
-    ports: 
+    ports:
       - 6379:6379
     networks:
       - backnet
@@ -22,19 +22,6 @@ services:
     networks:
       - backnet
 
-  queue:
-    image: rabbitmq:3.11.26-management
-    container_name: was_queue
-    restart: always
-    ports:
-      - 5672:5672
-      - 15672:15672
-    volumes:
-      - C:/data/rabbitmq/:/var/lib/rabbitmq
-    networks:
-      - backnet
-    
-      
 networks:
   backnet:
     name: backnet
