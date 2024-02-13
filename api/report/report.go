@@ -3,11 +3,15 @@ package reportAPI
 import (
 	"net/http"
 
+	"github.com/capdale/was/api"
 	"github.com/capdale/was/auth"
+	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var logger = baseLogger.Logger
 
 type database interface {
 	GetUserIdByUUID(uuid *uuid.UUID) (int64, error)
@@ -39,18 +43,21 @@ func (r *ReportAPI) PostUserReportHandler(ctx *gin.Context) {
 	form := new(postReportUserForm)
 	err := ctx.ShouldBind(form)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	if *form.ReportDetailType < model.ReportUserMin || *form.ReportDetailType > model.ReportUserMax {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid report detail type"})
+		logger.ErrorWithCTX(ctx, "binding form, detail type", nil)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	targetUserUUID, err := uuid.Parse(*form.TargetUserUUID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid user"})
+		logger.ErrorWithCTX(ctx, "binding form, parse uuid", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 	// validate form end
@@ -61,13 +68,15 @@ func (r *ReportAPI) PostUserReportHandler(ctx *gin.Context) {
 		claims := claimsPtr.(*auth.AuthClaims)
 		issuerId, err = r.d.GetUserIdByUUID(&claims.UserUUID)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
+			api.BasicInternalServerError(ctx)
 			return
 		}
 	}
 
 	if err = r.d.CreateReportUser(issuerId, &targetUserUUID, *form.ReportDetailType, form.Description); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "create report user", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
@@ -84,12 +93,14 @@ func (r *ReportAPI) PostReportArticleHandler(ctx *gin.Context) {
 	form := new(postReportArticleForm)
 	err := ctx.ShouldBind(form)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	if *form.ReportDetailType < model.ReportArticleMin || *form.ReportDetailType > model.ReportArticleMax {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid report detail type"})
+		logger.ErrorWithCTX(ctx, "binding form, detail type", nil)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 	// validate form end
@@ -100,13 +111,15 @@ func (r *ReportAPI) PostReportArticleHandler(ctx *gin.Context) {
 		claims := claimsPtr.(*auth.AuthClaims)
 		issuerId, err = r.d.GetUserIdByUUID(&claims.UserUUID)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
+			api.BasicInternalServerError(ctx)
 			return
 		}
 	}
 
 	if err = r.d.CreateReportArticle(issuerId, *form.TargetArticleLink, *form.ReportDetailType, form.Description); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "create report article", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
@@ -114,7 +127,7 @@ func (r *ReportAPI) PostReportArticleHandler(ctx *gin.Context) {
 
 type postReportBugForm struct {
 	Title       *string `json:"title" binding:"required"`
-	Description *string `json:"description"`
+	Description *string `json:"description" binding:"required"`
 }
 
 func (r *ReportAPI) PostReportBugHandler(ctx *gin.Context) {
@@ -122,7 +135,8 @@ func (r *ReportAPI) PostReportBugHandler(ctx *gin.Context) {
 	form := new(postReportBugForm)
 	err := ctx.ShouldBind(form)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 	// validate form end
@@ -133,21 +147,22 @@ func (r *ReportAPI) PostReportBugHandler(ctx *gin.Context) {
 		claims := claimsPtr.(*auth.AuthClaims)
 		issuerId, err = r.d.GetUserIdByUUID(&claims.UserUUID)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
+			api.BasicInternalServerError(ctx)
 			return
 		}
 	}
 
 	if err = r.d.CreateReportBug(issuerId, *form.Title, *form.Description); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-		return
+		logger.ErrorWithCTX(ctx, "creat report bug", err)
+		api.BasicInternalServerError(ctx)
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
 }
 
 type postReportHelpForm struct {
 	Title       *string `json:"title" binding:"required"`
-	Description *string `json:"description"`
+	Description *string `json:"description" binding:"required"`
 }
 
 func (r *ReportAPI) PostReportHelpHandler(ctx *gin.Context) {
@@ -155,7 +170,8 @@ func (r *ReportAPI) PostReportHelpHandler(ctx *gin.Context) {
 	form := new(postReportHelpForm)
 	err := ctx.ShouldBind(form)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 	// validate form end
@@ -166,13 +182,15 @@ func (r *ReportAPI) PostReportHelpHandler(ctx *gin.Context) {
 		claims := claimsPtr.(*auth.AuthClaims)
 		issuerId, err = r.d.GetUserIdByUUID(&claims.UserUUID)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
+			api.BasicInternalServerError(ctx)
 			return
 		}
 	}
 
 	if err = r.d.CreateReportHelp(issuerId, *form.Title, *form.Description); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "create report help", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
@@ -180,7 +198,7 @@ func (r *ReportAPI) PostReportHelpHandler(ctx *gin.Context) {
 
 type postReportEtcForm struct {
 	Title       *string `json:"title" binding:"required"`
-	Description *string `json:"description"`
+	Description *string `json:"description" binding:"required"`
 }
 
 func (r *ReportAPI) PostReportEtcHandler(ctx *gin.Context) {
@@ -188,7 +206,8 @@ func (r *ReportAPI) PostReportEtcHandler(ctx *gin.Context) {
 	form := new(postReportEtcForm)
 	err := ctx.ShouldBind(form)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 	// validate form end
@@ -199,13 +218,15 @@ func (r *ReportAPI) PostReportEtcHandler(ctx *gin.Context) {
 		claims := claimsPtr.(*auth.AuthClaims)
 		issuerId, err = r.d.GetUserIdByUUID(&claims.UserUUID)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
+			api.BasicInternalServerError(ctx)
 			return
 		}
 	}
 
 	if err = r.d.CreateReportEtc(issuerId, *form.Title, *form.Description); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "create report etc", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})

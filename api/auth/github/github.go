@@ -4,14 +4,18 @@ import (
 	"encoding/base64"
 	"net/http"
 
+	"github.com/capdale/was/api"
 	authapi "github.com/capdale/was/api/auth"
 	"github.com/capdale/was/auth"
+	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
+
+var logger = baseLogger.Logger
 
 const (
 	emailInfoEndpoint = "https://api.github.com/user/emails"
@@ -46,9 +50,8 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 	})
 	rand32, err := auth.RandToken(32)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "internal server error",
-		})
+		logger.ErrorWithCTX(ctx, "generate random token", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	state := base64.StdEncoding.EncodeToString(*rand32)
@@ -64,38 +67,36 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	err := authapi.CheckState(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
+		logger.ErrorWithCTX(ctx, "cannot find state", err)
+		api.BasicUnAuthorizedError(ctx)
 		return
 	}
 
 	token, err := g.OAuthConfig.Exchange(ctx.Request.Context(), ctx.Query("code"))
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
-		return
+		logger.ErrorWithCTX(ctx, "exchane oauth failed", err)
+		api.BasicUnAuthorizedError(ctx)
 	}
 	if !token.Valid() {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
-		return
+		logger.ErrorWithCTX(ctx, "token invalid", nil)
+		api.BasicUnAuthorizedError(ctx)
 	}
 
 	userId, err := g.getUserId(ctx, token)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "get user id failed", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 
 	userEmail, err := g.getEmail(ctx, token)
 	if err == authapi.ErrNoValidEmail {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "no valid email", err)
+		api.BasicInternalServerError(ctx)
 		return
 	} else if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "get email failed", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 
@@ -104,20 +105,17 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	if err == gorm.ErrRecordNotFound {
 		user, err = g.createSocial(userId, userEmail)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"message": err.Error(),
-			})
+			logger.ErrorWithCTX(ctx, "create social account", err)
+			api.BasicInternalServerError(ctx)
 			return
 		}
 	} else if err == authapi.ErrAlreayExistEmail {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "try to create duplicated email account", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "email already used"})
 		return
 	} else if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "query social account by email", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 
@@ -125,9 +123,8 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 
 	tokenString, refreshToken, err := g.Auth.IssueTokenByUUID(&user.UUID, &userAgent)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "issue token", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 

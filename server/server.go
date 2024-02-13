@@ -18,6 +18,7 @@ import (
 	"github.com/gin-contrib/sessions/redis"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -34,6 +35,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		MaxBackups: config.Service.Log.MaxBackups,
 		MaxAge:     config.Service.Log.MaxAge,
 	}, isProduction, config.Service.Log.Console)
+	logger.Init(routerLogger)
 
 	r.Use(ginzap.Ginzap(routerLogger, time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(routerLogger, true))
@@ -77,6 +79,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	auth := auth.New(d, store)
 
 	r.GET("/", func(ctx *gin.Context) {
+		logger.Logger.InfoWithCTX(ctx, "log check", zap.String("asdf", "A"))
 		ctx.JSON(http.StatusOK, gin.H{
 			"ok": "ok",
 		})

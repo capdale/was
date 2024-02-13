@@ -4,11 +4,15 @@ import (
 	"mime/multipart"
 	"net/http"
 
+	"github.com/capdale/was/api"
 	"github.com/capdale/was/auth"
+	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var logger = baseLogger.Logger
 
 type database interface {
 	GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]uuid.UUID, error)
@@ -45,17 +49,16 @@ type Collection = model.CollectionAPI
 func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 	var req GetCollectionReq
 	if err := ctx.ShouldBind(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
+
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	collections, err := a.DB.GetCollections(&claims.UserUUID, *req.Offset, *req.Limit)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		logger.ErrorWithCTX(ctx, "db get collections", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	res := &GetCollectionRes{
@@ -69,31 +72,27 @@ func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 	var body PostCollectionReq
 
 	if err := ctx.ShouldBind(&body); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": "bad request form",
-		})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	err := isValidImageFromFile(body.ImageFile)
 	if err != nil {
 		if err == ErrImageInValid {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"message": "invalid image",
-			})
+			logger.ErrorWithCTX(ctx, "invalid image", err)
+			api.BasicBadRequestError(ctx)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "internal server error",
-		})
+		logger.ErrorWithCTX(ctx, "validate image", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	issuedUUID, err := a.DB.CreateCollectionWithUserUUID(&body.Info, &claims.UserUUID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "internal server error",
-		})
+		logger.ErrorWithCTX(ctx, "create collection with useruuid", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 
@@ -107,17 +106,15 @@ func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
 	uuidParam := ctx.Param("uuid")
 	collectionUUID, err := uuid.Parse(uuidParam)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": "bad request form",
-		})
+		logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	collection, err := a.DB.GetCollectionByUUID(&collectionUUID)
 	if err != nil {
-		ctx.JSON(http.StatusForbidden, gin.H{
-			"message": "no content",
-		})
+		logger.ErrorWithCTX(ctx, "get collection by uuid", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 
