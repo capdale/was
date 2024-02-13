@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/capdale/was/api"
 	"github.com/capdale/was/auth"
+	"github.com/capdale/was/logger"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
@@ -58,9 +60,8 @@ func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 	a.Auth.SetBlacklistByToken(claims)
 	err := a.Auth.Store.SetBlacklist(tokenString, time.Until(claims.ExpiresAt.Time))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": "internal server error",
-		})
+		logger.Logger.ErrorWithCTX(ctx, "set token blacklist", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
@@ -69,29 +70,26 @@ func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 }
 
 func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
-	var body RefreshTokenReq
-	err := ctx.BindJSON(&body)
+	form := new(RefreshTokenReq)
+	err := ctx.BindJSON(form)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		logger.Logger.ErrorWithCTX(ctx, "binding form", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	userAgent := ctx.Request.UserAgent()
-	oldRefreshToken, err := base64.StdEncoding.DecodeString(*body.RefreshToken)
+	oldRefreshToken, err := base64.StdEncoding.DecodeString(*form.RefreshToken)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		logger.Logger.ErrorWithCTX(ctx, "binding refresh token", err)
+		api.BasicBadRequestError(ctx)
 		return
 	}
 
 	newToken, newRefreshToken, err := a.Auth.RefreshToken(&oldRefreshToken, &userAgent)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		logger.Logger.ErrorWithCTX(ctx, "refresh token failed", err)
+		api.BasicInternalServerError(ctx)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{

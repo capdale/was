@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/capdale/was/config"
+	"github.com/capdale/was/logger"
 	"github.com/capdale/was/server"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -25,6 +27,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()))
 
 	srv := &http.Server{
 		Addr:    config.Service.Address,
