@@ -50,6 +50,7 @@ func (d *DB) AutoMigrate() (err error) {
 		&model.User{}, &model.Token{},
 		&model.Collection{},
 		&model.ReportUser{}, &model.ReportArticle{}, &model.ReportBug{}, &model.ReportHelp{}, &model.ReportEtc{},
+		&model.Article{}, &model.ArticleCollection{},
 	)
 	return err
 }
