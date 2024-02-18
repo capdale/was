@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/capdale/was/types/binaryuuid"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
 type AuthClaims struct {
-	UserUUID uuid.UUID `json:"uuid"`
+	UUID binaryuuid.UUID `json:"user"`
 	jwt.RegisteredClaims
 }
 
@@ -25,7 +26,7 @@ func (a *AuthClaims) isExpired() bool {
 	return time.Until(a.ExpiresAt.Time) < 0
 }
 
-func (a *Auth) IssueTokenByUUID(userUUID *uuid.UUID, agent *string) (tokenString string, refreshToken *[]byte, err error) {
+func (a *Auth) IssueTokenByUserUUID(userUUID binaryuuid.UUID, userId int64, agent *string) (tokenString string, refreshToken *[]byte, err error) {
 	// this function manage all secure process, store refresh token in db, validate token etc
 	claims, err := a.generateClaim(userUUID)
 	if err != nil {
@@ -39,7 +40,7 @@ func (a *Auth) IssueTokenByUUID(userUUID *uuid.UUID, agent *string) (tokenString
 	if err != nil {
 		return
 	}
-	if err = a.DB.SaveToken(&claims.UserUUID, tokenString, refreshToken, agent); err != nil {
+	if err = a.DB.SaveToken(userId, tokenString, refreshToken, agent); err != nil {
 		return
 	}
 	return
@@ -64,10 +65,10 @@ func (a *Auth) generateRefreshToken() (*[]byte, error) {
 	return &refreshToken, nil
 }
 
-func (a *Auth) generateClaim(userUUID *uuid.UUID) (c *AuthClaims, err error) {
+func (a *Auth) generateClaim(userUUID binaryuuid.UUID) (c *AuthClaims, err error) {
 	expirationTime := time.Now().Add(time.Minute * 30)
 	c = &AuthClaims{
-		UserUUID: *userUUID,
+		UUID: userUUID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -125,7 +126,11 @@ func (a *Auth) RefreshToken(refreshToken *[]byte, agent *string) (newToken strin
 	if err != nil {
 		return
 	}
-	newToken, newRefreshToken, err = a.IssueTokenByUUID(&claims.UserUUID, agent)
+	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
+	if err != nil {
+		return
+	}
+	newToken, newRefreshToken, err = a.IssueTokenByUserUUID(claims.UUID, userId, agent)
 	return
 }
 
