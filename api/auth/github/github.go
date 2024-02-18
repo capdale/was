@@ -50,8 +50,8 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 	})
 	rand32, err := auth.RandToken(32)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "generate random token", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "generate random token", err)
 		return
 	}
 	state := base64.StdEncoding.EncodeToString(*rand32)
@@ -67,36 +67,36 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	err := authapi.CheckState(ctx)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "cannot find state", err)
 		api.BasicUnAuthorizedError(ctx)
+		logger.ErrorWithCTX(ctx, "cannot find state", err)
 		return
 	}
 
 	token, err := g.OAuthConfig.Exchange(ctx.Request.Context(), ctx.Query("code"))
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "exchane oauth failed", err)
 		api.BasicUnAuthorizedError(ctx)
+		logger.ErrorWithCTX(ctx, "exchane oauth failed", err)
 	}
 	if !token.Valid() {
-		logger.ErrorWithCTX(ctx, "token invalid", nil)
 		api.BasicUnAuthorizedError(ctx)
+		logger.ErrorWithCTX(ctx, "token invalid", nil)
 	}
 
 	userId, err := g.getUserId(ctx, token)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "get user id failed", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "get user id failed", err)
 		return
 	}
 
 	userEmail, err := g.getEmail(ctx, token)
 	if err == authapi.ErrNoValidEmail {
-		logger.ErrorWithCTX(ctx, "no valid email", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "no valid email", err)
 		return
 	} else if err != nil {
-		logger.ErrorWithCTX(ctx, "get email failed", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "get email failed", err)
 		return
 	}
 
@@ -105,26 +105,26 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	if err == gorm.ErrRecordNotFound {
 		user, err = g.createSocial(userId, userEmail)
 		if err != nil {
-			logger.ErrorWithCTX(ctx, "create social account", err)
 			api.BasicInternalServerError(ctx)
+			logger.ErrorWithCTX(ctx, "create social account", err)
 			return
 		}
 	} else if err == authapi.ErrAlreayExistEmail {
-		logger.ErrorWithCTX(ctx, "try to create duplicated email account", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "email already used"})
+		logger.ErrorWithCTX(ctx, "try to create duplicated email account", err)
 		return
 	} else if err != nil {
-		logger.ErrorWithCTX(ctx, "query social account by email", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "query social account by email", err)
 		return
 	}
 
 	userAgent := ctx.Request.UserAgent()
 
-	tokenString, refreshToken, err := g.Auth.IssueTokenByUUID(&user.UUID, &userAgent)
+	tokenString, refreshToken, err := g.Auth.IssueTokenByUserUUID(user.UUID, user.Id, &userAgent)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "issue token", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "issue token", err)
 		return
 	}
 
