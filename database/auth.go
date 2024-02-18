@@ -12,7 +12,7 @@ import (
 
 var ErrNoAffectedRow = errors.New("there is no specific row")
 
-func (d *DB) SaveToken(userUUID *uuid.UUID, tokenString string, refreshToken *[]byte, agent *string) error {
+func (d *DB) SaveToken(userId int64, tokenString string, refreshToken *[]byte, agent *string) error {
 	UID, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func (d *DB) SaveToken(userUUID *uuid.UUID, tokenString string, refreshToken *[]
 
 	return d.DB.Create(&model.Token{
 		ID:           BUID,
-		UserUUID:     *userUUID,
+		UserId:       userId,
 		Token:        tokenString,
 		RefreshToken: *refreshToken,
 		UserAgent:    *agent,

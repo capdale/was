@@ -60,8 +60,8 @@ func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 	a.Auth.SetBlacklistByToken(claims)
 	err := a.Auth.Store.SetBlacklist(tokenString, time.Until(claims.ExpiresAt.Time))
 	if err != nil {
-		logger.Logger.ErrorWithCTX(ctx, "set token blacklist", err)
 		api.BasicInternalServerError(ctx)
+		logger.Logger.ErrorWithCTX(ctx, "set token blacklist", err)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
@@ -73,27 +73,32 @@ func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 	form := new(RefreshTokenReq)
 	err := ctx.BindJSON(form)
 	if err != nil {
-		logger.Logger.ErrorWithCTX(ctx, "binding form", err)
 		api.BasicBadRequestError(ctx)
+		logger.Logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
 
 	userAgent := ctx.Request.UserAgent()
 	oldRefreshToken, err := base64.StdEncoding.DecodeString(*form.RefreshToken)
 	if err != nil {
-		logger.Logger.ErrorWithCTX(ctx, "binding refresh token", err)
 		api.BasicBadRequestError(ctx)
+		logger.Logger.ErrorWithCTX(ctx, "binding refresh token", err)
 		return
 	}
 
 	newToken, newRefreshToken, err := a.Auth.RefreshToken(&oldRefreshToken, &userAgent)
 	if err != nil {
-		logger.Logger.ErrorWithCTX(ctx, "refresh token failed", err)
 		api.BasicInternalServerError(ctx)
+		logger.Logger.ErrorWithCTX(ctx, "refresh token failed", err)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  newToken,
 		"refresh_token": base64.StdEncoding.EncodeToString(*newRefreshToken),
 	})
+}
+
+func (a *AuthAPI) WhoAmIHandler(ctx *gin.Context) {
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	ctx.JSON(http.StatusOK, gin.H{"uuid": claims.UUID.String()})
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	articleAPI "github.com/capdale/was/api/article"
 	authapi "github.com/capdale/was/api/auth"
 	githubAuth "github.com/capdale/was/api/auth/github"
 	collect "github.com/capdale/was/api/collection"
@@ -97,6 +98,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	authAPI := authapi.New(d, auth)
 	authRouter := r.Group("/auth")
 	{
+		authRouter.GET("/whoami", auth.AuthorizeRequiredMiddleware(), authAPI.WhoAmIHandler)
 		authRouter.POST("/blacklist", auth.AuthorizeRequiredMiddleware(), authAPI.SetBlacklistHandler)
 		authRouter.POST("/refresh", authAPI.RefreshTokenHandler)
 		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
@@ -121,6 +123,14 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		reportRouter.POST("/bug", reportAPI.PostReportBugHandler)
 		reportRouter.POST("/help", reportAPI.PostReportHelpHandler)
 		reportRouter.POST("/etc", reportAPI.PostReportEtcHandler)
+	}
+
+	articleAPI := articleAPI.New(d)
+	articleRouter := r.Group("/article")
+	{
+		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
+		articleRouter.GET("/get-links/:useruuid", articleAPI.GetUserArticleLinksHandler)
+		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
 	}
 
 	return r, nil

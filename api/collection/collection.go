@@ -8,6 +8,7 @@ import (
 	"github.com/capdale/was/auth"
 	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
+	"github.com/capdale/was/types/binaryuuid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -15,9 +16,10 @@ import (
 var logger = baseLogger.Logger
 
 type database interface {
-	GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]uuid.UUID, error)
+	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
+	GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetCollectionByUUID(collectionUUID *uuid.UUID) (*Collection, error)
-	CreateCollectionWithUserUUID(collection *Collection, userUUID *uuid.UUID) (collectionUUID *uuid.UUID, err error)
+	CreateCollection(collection *Collection, useId int64) (collectionUUID binaryuuid.UUID, err error)
 }
 
 type CollectAPI struct {
@@ -36,7 +38,7 @@ type GetCollectionReq struct {
 }
 
 type GetCollectionRes struct {
-	Collections []uuid.UUID `json:"collections"`
+	Collections []binaryuuid.UUID `json:"collections"`
 }
 
 type PostCollectionReq struct {
@@ -49,18 +51,26 @@ type Collection = model.CollectionAPI
 func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 	var req GetCollectionReq
 	if err := ctx.ShouldBind(&req); err != nil {
-		logger.ErrorWithCTX(ctx, "binding form", err)
 		api.BasicBadRequestError(ctx)
+		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
 
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	collections, err := a.DB.GetCollections(&claims.UserUUID, *req.Offset, *req.Limit)
+	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "db get collections", err)
-		api.BasicInternalServerError(ctx)
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
 		return
 	}
+
+	collections, err := a.DB.GetCollectionUUIDs(userId, *req.Offset, *req.Limit)
+	if err != nil {
+		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "db get collections", err)
+		return
+	}
+
 	res := &GetCollectionRes{
 		Collections: *collections,
 	}
@@ -72,27 +82,34 @@ func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 	var body PostCollectionReq
 
 	if err := ctx.ShouldBind(&body); err != nil {
-		logger.ErrorWithCTX(ctx, "binding form", err)
 		api.BasicBadRequestError(ctx)
+		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
 
 	err := isValidImageFromFile(body.ImageFile)
 	if err != nil {
 		if err == ErrImageInValid {
-			logger.ErrorWithCTX(ctx, "invalid image", err)
 			api.BasicBadRequestError(ctx)
+			logger.ErrorWithCTX(ctx, "invalid image", err)
 			return
 		}
-		logger.ErrorWithCTX(ctx, "validate image", err)
 		api.BasicBadRequestError(ctx)
+		logger.ErrorWithCTX(ctx, "validate image", err)
 		return
 	}
 
-	issuedUUID, err := a.DB.CreateCollectionWithUserUUID(&body.Info, &claims.UserUUID)
+	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "create collection with useruuid", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
+		return
+	}
+
+	issuedUUID, err := a.DB.CreateCollection(&body.Info, userId)
+	if err != nil {
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "create collection with useruuid", err)
 		return
 	}
 
@@ -106,15 +123,15 @@ func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
 	uuidParam := ctx.Param("uuid")
 	collectionUUID, err := uuid.Parse(uuidParam)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "binding form", err)
 		api.BasicBadRequestError(ctx)
+		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
 
 	collection, err := a.DB.GetCollectionByUUID(&collectionUUID)
 	if err != nil {
-		logger.ErrorWithCTX(ctx, "get collection by uuid", err)
 		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "get collection by uuid", err)
 		return
 	}
 
