@@ -2,15 +2,16 @@ package database
 
 import (
 	"github.com/capdale/was/model"
+	"github.com/capdale/was/types/binaryuuid"
 	"github.com/google/uuid"
 )
 
-func (d *DB) GetCollections(userUUID *uuid.UUID, offset int, limit int) (*[]uuid.UUID, error) {
+func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error) {
 	collections := []model.Collection{}
-	err := d.DB.Select("uuid").Where("user_uuid = ?", userUUID).Offset(offset).Limit(limit).Find(&collections).Error
-	uuids := make([]uuid.UUID, len(collections))
+	err := d.DB.Select("uuid").Where("user_id = ?", userId).Offset(offset).Limit(limit).Find(&collections).Error
+	uuids := make([]binaryuuid.UUID, len(collections))
 	for i, collection := range collections {
-		uuids[i] = collection.UUID
+		uuids[i] = binaryuuid.UUID(collection.UUID)
 	}
 	return &uuids, err
 }
@@ -21,17 +22,26 @@ func (d *DB) GetCollectionByUUID(collectionUUID *uuid.UUID) (collection *model.C
 	return
 }
 
-func (d *DB) CreateCollectionWithUserUUID(collection *model.CollectionAPI, userUUID *uuid.UUID) (collectionUUID *uuid.UUID, err error) {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		return
-	}
-	collectionUUID = &uuid
-	err = d.DB.Create(&model.Collection{
-		UserUUID:        *userUUID,
-		UUID:            uuid,
+func (d *DB) CreateCollection(collection *model.CollectionAPI, userId int64) (binaryuuid.UUID, error) {
+	c := &model.Collection{
+		UserId:          userId,
 		CollectionIndex: collection.CollectionIndex,
 		Geolocation:     collection.Geolocation,
-	}).Error
-	return
+	}
+	err := d.DB.Create(c).Error
+	return c.UUID, err
+}
+
+func (d *DB) GetCollectionIdsByUUIDs(userId int64, collectionUUIDs *[]uuid.UUID) (*[]uint64, error) {
+	query := []model.Collection{}
+	for _, cuid := range *collectionUUIDs {
+		query = append(query, model.Collection{UserId: userId, UUID: binaryuuid.UUID(cuid)})
+	}
+	collections := []model.Collection{}
+	collectionIds := []uint64{}
+	err := d.DB.Where(query, "userId", "UUID").Find(&collections).Error
+	for _, collection := range collections {
+		collectionIds = append(collectionIds, collection.Id)
+	}
+	return &collectionIds, err
 }
