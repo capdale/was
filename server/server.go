@@ -30,6 +30,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	isProduction := gin.Mode() == gin.ReleaseMode
 
+	// if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+	// 	v.RegisterCustomTypeFunc(binaryuuid.ValidateUUID, binaryuuid.UUID{})
+	// }
+
 	routerLogger := logger.New(&lumberjack.Logger{
 		Filename:   config.Service.Log.Path,
 		MaxSize:    config.Service.Log.MaxSize,

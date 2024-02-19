@@ -31,78 +31,65 @@ func New(d database) *ArticleAPI {
 }
 
 type createArticleForm struct {
-	Title           string   `json:"title"`
-	Content         string   `json:"content"`
-	CollectionUUIDs []string `json:"collections"`
+	Title           string   `json:"title" binding:"required,min=4,max=32"`
+	Content         string   `json:"content" binding:"required,min=8,max=512"`
+	CollectionUUIDs []string `json:"collections" binding:"required,dive,uuid"`
 }
 
 func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	form := &createArticleForm{}
-	err := ctx.ShouldBind(form)
-	collectionUUIDs := []binaryuuid.UUID{}
-	for _, cuidStr := range form.CollectionUUIDs {
-		cuid, err := binaryuuid.Parse(cuidStr)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-			return
-		}
-		collectionUUIDs = append(collectionUUIDs, cuid)
+	if err := ctx.Bind(form); err != nil {
+		logger.ErrorWithCTX(ctx, "binding error", err)
+		return
 	}
 
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-		return
+	collectionUUIDs := []binaryuuid.UUID{}
+	for _, cuidStr := range form.CollectionUUIDs {
+		// validate while bind (Validator)
+		cuid := binaryuuid.MustParse(cuidStr)
+		collectionUUIDs = append(collectionUUIDs, cuid)
 	}
 
 	userId, err := a.d.GetUserIdByUUID(claims.UUID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		logger.ErrorWithCTX(ctx, "get userid by uuid", err)
 		return
 	}
 
 	if err = a.d.CreateNewArticle(userId, form.Title, form.Content, &collectionUUIDs); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		logger.ErrorWithCTX(ctx, "create new article", err)
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
 }
 
+type getArticlesByUserUUIDUri struct {
+	UserUUIDStr string `uri:"useruuid" binding:"required,uuid"`
+}
+
 type getArticlesByUserUUIDForm struct {
-	Offset *int `form:"offset"`
-	Limit  *int `form:"limit"`
+	Offset int `form:"offset,default=0" binding:"min=0"`
+	Limit  int `form:"limit,default=20" binding:"min=1,max=20"`
 }
 
 func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
-	userUUIDStr := ctx.Param("useruuid")
-	userUUID, err := binaryuuid.Parse(userUUIDStr)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-		logger.ErrorWithCTX(ctx, "useruuid parse", err)
-		return
-	}
 	form := &getArticlesByUserUUIDForm{}
-	err = ctx.ShouldBind(form)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "bind form", err)
 		return
 	}
 
-	offset := 0
-	limit := 20
-	if form.Limit != nil {
-		limit = *form.Limit
-	}
-	if form.Offset != nil {
-		offset = *form.Offset
-	}
-	if offset < 0 || limit < 1 || limit > 100 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-		logger.ErrorWithCTX(ctx, "bind limit error", nil)
+	uri := &getArticlesByUserUUIDUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		logger.ErrorWithCTX(ctx, "bind uri", err)
 		return
 	}
 
+	// validate with Validator,
+	userUUID := binaryuuid.MustParse(uri.UserUUIDStr)
 	userId, err := a.d.GetUserIdByUUID(userUUID)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
@@ -110,7 +97,7 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 		return
 	}
 
-	articles, err := a.d.GetArticleLinkIdsByUserId(userId, offset, limit)
+	articles, err := a.d.GetArticleLinkIdsByUserId(userId, form.Offset, form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "query linkids by user id", err)
@@ -122,7 +109,7 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 		links[i] = base64.URLEncoding.EncodeToString(append(userUUID[:], article[:]...))
 	}
 
-	ctx.JSON(http.StatusOK, links)
+	ctx.JSON(http.StatusOK, gin.H{"links": links})
 }
 
 func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {

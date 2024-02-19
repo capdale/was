@@ -26,7 +26,7 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 
 func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error) {
 	user := new(model.User)
-	if err := d.DB.Select("id").Where("UUID = ?", userUUID).First(user).Error; err != nil {
+	if err := d.DB.Select("id").Where("uuid = ?", userUUID).First(user).Error; err != nil {
 		return 0, err
 	}
 	return user.Id, nil

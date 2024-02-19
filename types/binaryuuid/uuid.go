@@ -2,6 +2,7 @@ package binaryuuid
 
 import (
 	"database/sql/driver"
+	"reflect"
 
 	"github.com/google/uuid"
 )
@@ -27,6 +28,11 @@ func (u UUID) String() string {
 	return uuid.UUID(u).String()
 }
 
+func MustParse(s string) UUID {
+	uuid := uuid.MustParse(s)
+	return UUID(uuid)
+}
+
 func Parse(s string) (UUID, error) {
 	uuid, err := uuid.Parse(s)
 	uid := UUID(uuid)
@@ -49,4 +55,11 @@ func FromBytes(by []byte) (UUID, error) {
 	b, err := uuid.FromBytes(by)
 	nb := UUID(b)
 	return nb, err
+}
+
+func ValidateUUID(field reflect.Value) interface{} {
+	if valuer, ok := field.Interface().(UUID); ok {
+		return valuer.String()
+	}
+	return nil
 }
