@@ -26,7 +26,7 @@ func (a *AuthClaims) isExpired() bool {
 	return time.Until(a.ExpiresAt.Time) < 0
 }
 
-func (a *Auth) IssueTokenByUserUUID(userUUID binaryuuid.UUID, userId int64, agent *string) (tokenString string, refreshToken *[]byte, err error) {
+func (a *Auth) IssueTokenByUserUUID(userUUID binaryuuid.UUID, agent *string) (tokenString string, refreshToken *[]byte, err error) {
 	// this function manage all secure process, store refresh token in db, validate token etc
 	claims, err := a.generateClaim(userUUID)
 	if err != nil {
@@ -40,7 +40,7 @@ func (a *Auth) IssueTokenByUserUUID(userUUID binaryuuid.UUID, userId int64, agen
 	if err != nil {
 		return
 	}
-	if err = a.DB.SaveToken(userId, tokenString, refreshToken, agent); err != nil {
+	if err = a.DB.SaveToken(userUUID, tokenString, refreshToken, agent); err != nil {
 		return
 	}
 	return
@@ -126,11 +126,7 @@ func (a *Auth) RefreshToken(refreshToken *[]byte, agent *string) (newToken strin
 	if err != nil {
 		return
 	}
-	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
-	if err != nil {
-		return
-	}
-	newToken, newRefreshToken, err = a.IssueTokenByUserUUID(claims.UUID, userId, agent)
+	newToken, newRefreshToken, err = a.IssueTokenByUserUUID(claims.UUID, agent)
 	return
 }
 

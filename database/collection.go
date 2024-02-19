@@ -3,7 +3,6 @@ package database
 import (
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
-	"github.com/google/uuid"
 )
 
 func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error) {
@@ -16,7 +15,7 @@ func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryu
 	return &uuids, err
 }
 
-func (d *DB) GetCollectionByUUID(collectionUUID *uuid.UUID) (collection *model.CollectionAPI, err error) {
+func (d *DB) GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
 	collection = &model.CollectionAPI{}
 	err = d.DB.Model(&model.Collection{}).Where("uuid = ?", collectionUUID).Find(collection).Error
 	return
@@ -32,16 +31,16 @@ func (d *DB) CreateCollection(collection *model.CollectionAPI, userId int64) (bi
 	return c.UUID, err
 }
 
-func (d *DB) GetCollectionIdsByUUIDs(userId int64, collectionUUIDs *[]uuid.UUID) (*[]uint64, error) {
-	query := []model.Collection{}
-	for _, cuid := range *collectionUUIDs {
-		query = append(query, model.Collection{UserId: userId, UUID: binaryuuid.UUID(cuid)})
-	}
-	collections := []model.Collection{}
-	collectionIds := []uint64{}
-	err := d.DB.Where(query, "userId", "UUID").Find(&collections).Error
-	for _, collection := range collections {
-		collectionIds = append(collectionIds, collection.Id)
-	}
-	return &collectionIds, err
-}
+// func (d *DB) GetCollectionIdsByUUIDs(userId int64, collectionUUIDs *[]uuid.UUID) (*[]uint64, error) {
+// 	query := []model.Collection{}
+// 	for _, cuid := range *collectionUUIDs {
+// 		query = append(query, model.Collection{UserId: userId, UUID: binaryuuid.UUID(cuid)})
+// 	}
+// 	collections := []model.Collection{}
+// 	collectionIds := []uint64{}
+// 	err := d.DB.Where(query, "userId", "UUID").Find(&collections).Error
+// 	for _, collection := range collections {
+// 		collectionIds = append(collectionIds, collection.Id)
+// 	}
+// 	return &collectionIds, err
+// }

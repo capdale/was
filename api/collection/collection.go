@@ -10,7 +10,6 @@ import (
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 var logger = baseLogger.Logger
@@ -18,7 +17,7 @@ var logger = baseLogger.Logger
 type database interface {
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
-	GetCollectionByUUID(collectionUUID *uuid.UUID) (*Collection, error)
+	GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (*Collection, error)
 	CreateCollection(collection *Collection, useId int64) (collectionUUID binaryuuid.UUID, err error)
 }
 
@@ -32,26 +31,20 @@ func New(database database) *CollectAPI {
 	}
 }
 
-type GetCollectionReq struct {
-	Offset *int `json:"offset" form:"offset" binding:"required"`
-	Limit  *int `json:"limit" form:"limit" binding:"required"`
+type Collection = model.CollectionAPI
+
+type getCollectionform struct {
+	Offset int `json:"offset" form:"offset" binding:"required,min=0"`
+	Limit  int `json:"limit" form:"limit" binding:"required,min=1,max=100"`
 }
 
-type GetCollectionRes struct {
+type getCollectionRes struct {
 	Collections []binaryuuid.UUID `json:"collections"`
 }
 
-type PostCollectionReq struct {
-	ImageFile *multipart.FileHeader `form:"image" binding:"required"`
-	Info      Collection            `form:"info" binding:"required"`
-}
-
-type Collection = model.CollectionAPI
-
 func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
-	var req GetCollectionReq
-	if err := ctx.ShouldBind(&req); err != nil {
-		api.BasicBadRequestError(ctx)
+	form := &getCollectionform{}
+	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
@@ -59,35 +52,38 @@ func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
 		return
 	}
 
-	collections, err := a.DB.GetCollectionUUIDs(userId, *req.Offset, *req.Limit)
+	collections, err := a.DB.GetCollectionUUIDs(userId, form.Offset, form.Limit)
 	if err != nil {
-		api.BasicInternalServerError(ctx)
+		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "db get collections", err)
 		return
 	}
 
-	res := &GetCollectionRes{
+	res := &getCollectionRes{
 		Collections: *collections,
 	}
 	ctx.JSON(http.StatusOK, res)
 }
 
+type postCollectionForm struct {
+	Image *multipart.FileHeader `form:"image" binding:"required"`
+	Info  Collection            `form:"info" binding:"required"`
+}
+
 func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	var body PostCollectionReq
-
-	if err := ctx.ShouldBind(&body); err != nil {
-		api.BasicBadRequestError(ctx)
+	form := &postCollectionForm{}
+	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
 
-	err := isValidImageFromFile(body.ImageFile)
+	err := isValidImageFromFile(form.Image)
 	if err != nil {
 		if err == ErrImageInValid {
 			api.BasicBadRequestError(ctx)
@@ -101,12 +97,12 @@ func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 
 	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		api.BasicBadRequestError(ctx)
 		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
 		return
 	}
 
-	issuedUUID, err := a.DB.CreateCollection(&body.Info, userId)
+	issuedUUID, err := a.DB.CreateCollection(&form.Info, userId)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create collection with useruuid", err)
@@ -114,14 +110,13 @@ func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "ok",
-		"uuid":    issuedUUID,
+		"uuid": issuedUUID,
 	})
 }
 
 func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
 	uuidParam := ctx.Param("uuid")
-	collectionUUID, err := uuid.Parse(uuidParam)
+	collectionUUID, err := binaryuuid.Parse(uuidParam)
 	if err != nil {
 		api.BasicBadRequestError(ctx)
 		logger.ErrorWithCTX(ctx, "binding form", err)

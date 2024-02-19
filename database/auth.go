@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/capdale/was/model"
+	"github.com/capdale/was/types/binaryuuid"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -12,19 +13,9 @@ import (
 
 var ErrNoAffectedRow = errors.New("there is no specific row")
 
-func (d *DB) SaveToken(userId int64, tokenString string, refreshToken *[]byte, agent *string) error {
-	UID, err := uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-	BUID, err := UID.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
+func (d *DB) SaveToken(issuerUUID binaryuuid.UUID, tokenString string, refreshToken *[]byte, agent *string) error {
 	return d.DB.Create(&model.Token{
-		ID:           BUID,
-		UserId:       userId,
+		IssuerUUID:   issuerUUID,
 		Token:        tokenString,
 		RefreshToken: *refreshToken,
 		UserAgent:    *agent,
