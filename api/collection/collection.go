@@ -43,7 +43,7 @@ type getCollectionRes struct {
 }
 
 func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
-	form := getCollectionform{}
+	form := &getCollectionform{}
 	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
@@ -71,20 +71,19 @@ func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 }
 
 type postCollectionForm struct {
-	ImageFile *multipart.FileHeader `form:"image" binding:"required"`
-	Info      Collection            `form:"info" binding:"required"`
+	Image *multipart.FileHeader `form:"image" binding:"required"`
+	Info  Collection            `form:"info" binding:"required"`
 }
 
 func (a *CollectAPI) PostCollection(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	form := postCollectionForm{}
-	if err := ctx.ShouldBind(form); err != nil {
-		api.BasicBadRequestError(ctx)
+	form := &postCollectionForm{}
+	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
 
-	err := isValidImageFromFile(form.ImageFile)
+	err := isValidImageFromFile(form.Image)
 	if err != nil {
 		if err == ErrImageInValid {
 			api.BasicBadRequestError(ctx)
