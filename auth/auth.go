@@ -10,7 +10,7 @@ import (
 
 type database interface {
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	SaveToken(userId int64, tokenString string, refreshToken *[]byte, agent *string) error
+	SaveToken(issuerUUID binaryuuid.UUID, tokenString string, refreshToken *[]byte, agent *string) error
 	IfTokenExistRemoveElseErr(tokenString string, until time.Duration, blackToken func(string, time.Duration) error) error
 	PopTokenByRefreshToken(refreshToken *[]byte, transactionF func(string) error) (tokenString *string, err error)
 	QueryAllTokensByUserUUID(userUUID *uuid.UUID) (*[]*model.Token, error)
