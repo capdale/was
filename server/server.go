@@ -7,6 +7,7 @@ import (
 	articleAPI "github.com/capdale/was/api/article"
 	authapi "github.com/capdale/was/api/auth"
 	githubAuth "github.com/capdale/was/api/auth/github"
+	originAPI "github.com/capdale/was/api/auth/origin"
 	collect "github.com/capdale/was/api/collection"
 	reportAPI "github.com/capdale/was/api/report"
 	"github.com/capdale/was/auth"
@@ -100,6 +101,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	}
 
 	authAPI := authapi.New(d, auth)
+	originAPI := originAPI.New(d, auth)
 	authRouter := r.Group("/auth")
 	{
 		authRouter.GET("/whoami", auth.AuthorizeRequiredMiddleware(), authAPI.WhoAmIHandler)
@@ -112,6 +114,9 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			Scopes:       []string{"user:email"},
 			Endpoint:     github.Endpoint,
 		})
+		authRouter.POST("/regist-email", originAPI.CreateEmailTicketHandler)
+		authRouter.POST("/regist", originAPI.RegisterTicketHandler)
+		authRouter.POST("/login", originAPI.LoginHandler)
 		githubAuthRouter := authRouter.Group("/github").Use(sessions.Sessions("state", st))
 		{
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)

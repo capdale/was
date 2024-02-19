@@ -47,7 +47,7 @@ func New(mysqlConfig *config.Mysql) (db *DB, err error) {
 
 func (d *DB) AutoMigrate() (err error) {
 	err = d.DB.AutoMigrate(
-		&model.User{}, &model.Token{},
+		&model.User{}, &model.Token{}, &model.SocialUser{}, &model.OriginUser{},
 		&model.Collection{},
 		&model.ReportUser{}, &model.ReportArticle{}, &model.ReportBug{}, &model.ReportHelp{}, &model.ReportEtc{},
 		&model.Article{}, &model.ArticleCollection{},
