@@ -14,6 +14,7 @@ import (
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
 	"github.com/capdale/was/logger"
+	"github.com/capdale/was/s3"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -76,11 +77,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		return nil, err
 	}
 
-	// s3, err := s3.New(&config.S3)
-	// if err != nil {
-	// 	return
-	// }
-	// print(s3) // declare
+	s3storage, err := s3.New(&config.S3)
+	if err != nil {
+		return
+	}
 
 	auth := auth.New(d, store)
 
@@ -91,12 +91,12 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		})
 	})
 
-	collectAPI := collect.New(d)
+	collectAPI := collect.New(d, s3storage)
 
 	collectRouter := r.Group("/collection").Use(auth.AuthorizeRequiredMiddleware())
 	{
 		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
-		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.PostCollection)
+		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
 		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
 	}
 
