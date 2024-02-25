@@ -63,3 +63,9 @@ func ValidateUUID(field reflect.Value) interface{} {
 	}
 	return nil
 }
+
+func NewRandom() (UUID, error) {
+	uuid, err := uuid.NewRandom()
+	buid := UUID(uuid)
+	return buid, err
+}
