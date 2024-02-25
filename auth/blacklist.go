@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var ErrInValidRequest = errors.New("in valid request cannot find token")
+
 func (a *Auth) IsBlacklist(token string) (bool, error) {
 	return a.Store.IsBlacklist(token)
 }
@@ -24,8 +26,6 @@ func (a *Auth) SetBlacklistByToken(claims *AuthClaims) error {
 func (a *Auth) SetBlacklistByUserUUID(userUUID *uuid.UUID) error {
 	return nil
 }
-
-var ErrInValidRequest = errors.New("in valid request cannot find token")
 
 func TokenFromRequest(req *http.Request) (string, error) {
 	authString := req.Header.Get("Authorization")
