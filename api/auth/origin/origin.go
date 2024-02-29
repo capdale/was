@@ -37,7 +37,7 @@ type createEmailTicketForm struct {
 }
 
 func (o *OriginAPI) CreateEmailTicketHandler(ctx *gin.Context) {
-	form := createEmailTicketForm{}
+	form := &createEmailTicketForm{}
 	err := ctx.ShouldBind(form)
 	if err != nil {
 		ctx.Status(http.StatusBadRequest)
@@ -62,7 +62,7 @@ type registerTicketForm struct {
 }
 
 func (o *OriginAPI) RegisterTicketHandler(ctx *gin.Context) {
-	form := registerTicketForm{}
+	form := &registerTicketForm{}
 	err := ctx.ShouldBind(form)
 	if err != nil {
 		ctx.Status(http.StatusBadRequest)
@@ -87,7 +87,7 @@ type loginForm struct {
 }
 
 func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
-	form := loginForm{}
+	form := &loginForm{}
 	if err := ctx.ShouldBind(form); err != nil {
 		ctx.Status(http.StatusBadRequest)
 		logger.ErrorWithCTX(ctx, "binding error", err)
