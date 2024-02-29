@@ -18,10 +18,10 @@ type Article struct {
 	CreateAt           time.Time       `gorm:"autoCreateTime"`
 	UpdateAt           time.Time       `gorm:"autoUpdateTime"`
 	DeletedAt          gorm.DeletedAt
-	Tags               []ArticleTag
+	Tags               []*ArticleTag
 	ViewCount          uint64
-	ArticleImages      *[]*ArticleImage    `gorm:"foreignKey:ArticleId;references:Id"`
-	ArticleCollections []ArticleCollection `gorm:"foreignKey:ArticleId;references:Id"`
+	ArticleImages      *[]*ArticleImage     `gorm:"foreignKey:ArticleId;references:Id"`
+	ArticleCollections []*ArticleCollection `gorm:"foreignKey:ArticleId;references:Id"`
 }
 
 func (a *Article) BeforeCreate(tx *gorm.DB) error {

@@ -62,12 +62,19 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	form := &createArticleForm{}
 	if err := ctx.Bind(form); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid form"})
 		logger.ErrorWithCTX(ctx, "binding error", err)
 		return
 	}
 
 	imageCount := len(form.ImageHeaders)
 	collectionCount := uint8(len(form.Article.CollectionUUIDs))
+	if collectionCount != uint8(len(form.Article.Order)) {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid form"})
+		logger.ErrorWithCTX(ctx, "order / image count is not equal", nil)
+		return
+	}
+
 	for _, order := range form.Article.Order {
 		if order > collectionCount { // uint8, so no need to check sign of number
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request, order is invalid"})
