@@ -60,3 +60,9 @@ type Ticket struct {
 	UUID      binaryuuid.UUID `gorm:"uniqueIndex;not null"`
 	CreatedAt time.Time       `gorm:"autoCreateTime"`
 }
+
+func (t *Ticket) BeforeCreate(tx *gorm.DB) error {
+	uid, err := uuid.NewRandom()
+	t.UUID = binaryuuid.UUID(uid)
+	return err
+}

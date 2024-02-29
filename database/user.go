@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/capdale/was/model"
@@ -131,14 +132,18 @@ func (d *DB) CreateOriginViaTicket(ticketUUID binaryuuid.UUID, username string, 
 	}).Error
 }
 
+type useruuidNhashed struct {
+	UUID   binaryuuid.UUID
+	Hashed []byte
+}
+
 func (d *DB) GetOriginUserUUID(username string, password string) (*binaryuuid.UUID, error) {
-	user := &model.User{}
-	if err := d.DB.Preload("OriginUser", func(tx *gorm.DB) *gorm.DB {
-		return tx.Select("hased")
-	}).Select("uuid").Where("username = ? AND account_type = ?", username, model.AccountTypeOrigin).First(user).Error; err != nil {
+	user := &useruuidNhashed{}
+	if err := d.DB.Model(&model.User{}).Select("users.uuid", "origin_users.hashed").Joins("INNER JOIN origin_users ON origin_users.id = users.id").Where("username = ? AND account_type = ?", username, model.AccountTypeOrigin).First(user).Error; err != nil {
 		return nil, err
 	}
-	if err := bcrypt.CompareHashAndPassword(user.OriginUser.Hashed, []byte(password)); err != nil {
+	fmt.Println(user)
+	if err := bcrypt.CompareHashAndPassword(user.Hashed, []byte(password)); err != nil {
 		return nil, err
 	}
 	return &user.UUID, nil
