@@ -44,8 +44,8 @@ func New(database database, storage storage) *CollectAPI {
 type Collection = model.CollectionAPI
 
 type getCollectionform struct {
-	Offset int `json:"offset" form:"offset" binding:"required,min=0"`
-	Limit  int `json:"limit" form:"limit" binding:"required,min=1,max=100"`
+	Offset *int `form:"offset" binding:"required,min=0"`
+	Limit  int  `form:"limit" binding:"required,min=1,max=100"`
 }
 
 type getCollectionRes struct {
@@ -67,7 +67,7 @@ func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 		return
 	}
 
-	collections, err := a.DB.GetCollectionUUIDs(userId, form.Offset, form.Limit)
+	collections, err := a.DB.GetCollectionUUIDs(userId, *form.Offset, form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "db get collections", err)
