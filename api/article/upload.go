@@ -20,7 +20,7 @@ func (a *ArticleAPI) uploadImagesWithUUID(ctx context.Context, uuids *[]binaryuu
 	filenames := make([]string, count)
 	readers := make([]io.Reader, count)
 	for i := 0; i < count; i++ {
-		filenames = append(filenames, fmt.Sprintf(articleImageFmt, (*uuids)[i].String()))
+		filenames[i] = fmt.Sprintf(articleImageFmt, (*uuids)[i].String())
 		r, err := (*files)[i].Open()
 		if err != nil {
 			return err
