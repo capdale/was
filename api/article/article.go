@@ -1,9 +1,14 @@
 package articleAPI
 
 import (
+	"context"
 	"encoding/base64"
+	"errors"
+	"io"
+	"mime/multipart"
 	"net/http"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/capdale/was/auth"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
@@ -13,28 +18,45 @@ import (
 
 var logger = baselogger.Logger
 
+type storage interface {
+	UploadJPGs(ctx context.Context, filenames *[]string, readers *[]io.Reader) error
+	DeleteJPG(filename string) (*s3.DeleteObjectOutput, error)
+}
+
 type database interface {
 	GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetArticle(writerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
-	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID) error
+	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
 }
 
 type ArticleAPI struct {
-	d database
+	d       database
+	Storage storage
 }
 
-func New(d database) *ArticleAPI {
+func New(d database, storage storage) *ArticleAPI {
 	return &ArticleAPI{
-		d: d,
+		d:       d,
+		Storage: storage,
 	}
 }
 
+var ErrInvalidForm = errors.New("form is invalid")
+
 type createArticleForm struct {
-	Title           string   `json:"title" binding:"required,min=4,max=32"`
-	Content         string   `json:"content" binding:"required,min=8,max=512"`
-	CollectionUUIDs []string `json:"collections" binding:"required,dive,uuid"`
+	Article      articleForm             `form:"article"`
+	ImageHeaders []*multipart.FileHeader `form:"image[]" json:"image[]"`
 }
+
+type articleForm struct {
+	Title           string   `form:"title" json:"title" binding:"required,min=4,max=32"`
+	Content         string   `form:"content" json:"content" binding:"required,min=8,max=512"`
+	CollectionUUIDs []string `form:"collections" json:"collections" binding:"required,min=1,max=10,dive,uuid"`
+	Order           []uint8  `form:"order" json:"order" binding:"required"` // provide order information where collection will be ordered in
+}
+
+var ErrInvalidOrder = errors.New("invalid order")
 
 func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
@@ -44,11 +66,41 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	collectionUUIDs := []binaryuuid.UUID{}
-	for _, cuidStr := range form.CollectionUUIDs {
+	imageCount := len(form.ImageHeaders)
+	collectionCount := uint8(len(form.Article.CollectionUUIDs))
+	for _, order := range form.Article.Order {
+		if order > collectionCount { // uint8, so no need to check sign of number
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request, order is invalid"})
+			logger.ErrorWithCTX(ctx, "order invalid", ErrInvalidOrder)
+			return
+		}
+	}
+
+	collectionUUIDs := make([]binaryuuid.UUID, len(form.Article.CollectionUUIDs))
+	for i, cuidStr := range form.Article.CollectionUUIDs {
 		// validate while bind (Validator)
 		cuid := binaryuuid.MustParse(cuidStr)
-		collectionUUIDs = append(collectionUUIDs, cuid)
+		collectionUUIDs[i] = cuid
+	}
+
+	imageUUIDs := make([]binaryuuid.UUID, imageCount)
+	for i := 0; i < imageCount; i++ {
+		buid, err := binaryuuid.NewRandom()
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+			logger.ErrorWithCTX(ctx, "create image uuid", err)
+			return
+		}
+		imageUUIDs[i] = buid
+	}
+
+	// no check uuids duplicated, since uuidv4 duplicate probability is very low, err when insert to DB with unique key
+
+	// upload image first, for consistency, if database write success and imag write file, need to rollback but rollback can be also failed. Then its hard to track and recover
+	if err := a.uploadImagesWithUUID(ctx, &imageUUIDs, &form.ImageHeaders); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		logger.ErrorWithCTX(ctx, "upload image", err)
+		return
 	}
 
 	userId, err := a.d.GetUserIdByUUID(claims.UUID)
@@ -58,11 +110,12 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	if err = a.d.CreateNewArticle(userId, form.Title, form.Content, &collectionUUIDs); err != nil {
+	if err := a.d.CreateNewArticle(userId, form.Article.Title, form.Article.Content, &collectionUUIDs, &imageUUIDs, &form.Article.Order); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 		logger.ErrorWithCTX(ctx, "create new article", err)
 		return
 	}
+
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
 }
 
