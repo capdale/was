@@ -13,7 +13,6 @@ const articleImageFmt = `article-img-%s`
 
 func (a *ArticleAPI) uploadImagesWithUUID(ctx context.Context, uuids *[]binaryuuid.UUID, files *[]*multipart.FileHeader) error {
 	count := len(*uuids)
-	fmt.Println(count, len(*files))
 	if count != len(*files) {
 		return ErrInvalidForm
 	}
