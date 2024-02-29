@@ -1,10 +1,10 @@
 package auth
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,12 +15,24 @@ func (a *Auth) IsBlacklist(token string) (bool, error) {
 	return a.Store.IsBlacklist(token)
 }
 
-func (a *Auth) SetBlacklistByToken(claims *AuthClaims) error {
-	tokenString, err := a.generateToken(claims)
+func (a *Auth) BlackToken(tokenString *string, refreshTokenString *string) error {
+	claims, err := a.ValidateToken(*tokenString)
 	if err != nil {
 		return err
 	}
-	return a.DB.IfTokenExistRemoveElseErr(tokenString, time.Until(claims.ExpiresAt.Time), a.Store.SetBlacklist)
+	refreshToken, err := base64.StdEncoding.DecodeString(*refreshTokenString)
+	if err != nil {
+		return err
+	}
+	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
+	if err != nil {
+		return err
+	}
+
+	if err := a.DB.IsTokenPair(userId, claims.ExpiresAt.Time, &refreshToken); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *Auth) SetBlacklistByUserUUID(userUUID *uuid.UUID) error {

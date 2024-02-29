@@ -16,6 +16,12 @@ var (
 	ErrEmailAlreadyUsed = errors.New("email already used")
 )
 
+func (d *DB) GetUserById(userId int64) (*model.User, error) {
+	user := &model.User{}
+	err := d.DB.Where("id = ?", userId).First(user).Error
+	return user, err
+}
+
 func (d *DB) GetUserByEmail(email string) (user *model.User, err error) {
 	user = &model.User{}
 	err = d.DB.Where("email = ?", &email).First(user).Error

@@ -121,7 +121,7 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 
 	userAgent := ctx.Request.UserAgent()
 
-	tokenString, refreshToken, err := g.Auth.IssueTokenByUserUUID(user.UUID, &userAgent)
+	tokenString, refreshToken, err := g.Auth.IssueToken(user.UUID, &userAgent)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "issue token", err)
@@ -130,7 +130,7 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  tokenString,
-		"refresh_token": base64.StdEncoding.EncodeToString(*refreshToken),
+		"refresh_token": refreshToken,
 	})
 }
 
@@ -144,7 +144,7 @@ func (g *GithubAuth) getUserFromSocialByEmail(email string) (user *model.User, e
 	if err != nil {
 		return
 	}
-	if user.AccountType != 0 {
+	if user.AccountType != model.AccountTypeGithub {
 		return user, authapi.ErrAlreayExistEmail
 	}
 	return

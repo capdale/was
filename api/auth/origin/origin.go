@@ -1,7 +1,6 @@
 package originAPI
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -103,7 +102,7 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 	}
 
 	userAgent := ctx.Request.UserAgent()
-	tokenString, refreshToken, err := o.Auth.IssueTokenByUserUUID(*userUUID, &userAgent)
+	tokenString, refreshToken, err := o.Auth.IssueToken(*userUUID, &userAgent)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "issue token", err)
@@ -111,6 +110,6 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  tokenString,
-		"refresh_token": base64.StdEncoding.EncodeToString(*refreshToken),
+		"refresh_token": refreshToken,
 	})
 }
