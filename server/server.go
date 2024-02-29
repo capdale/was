@@ -134,7 +134,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		reportRouter.POST("/etc", reportAPI.PostReportEtcHandler)
 	}
 
-	articleAPI := articleAPI.New(d)
+	articleAPI := articleAPI.New(d, s3storage)
 	articleRouter := r.Group("/article")
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
