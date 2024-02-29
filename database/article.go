@@ -10,9 +10,9 @@ import (
 var ErrInvalidInput = errors.New("invalid input")
 
 func (d *DB) CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error {
-	collections := make([]model.ArticleCollection, len(*collectionUUIDs))
+	collections := make([]*model.ArticleCollection, len(*collectionUUIDs))
 	for i, cuid := range *collectionUUIDs {
-		collections[i] = model.ArticleCollection{CollectionUUID: cuid, Order: (*collectionOrder)[i]}
+		collections[i] = &model.ArticleCollection{CollectionUUID: cuid, Order: (*collectionOrder)[i]}
 	}
 
 	images := make([]*model.ArticleImage, len(*imageUUIDs))
