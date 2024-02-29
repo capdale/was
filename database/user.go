@@ -10,9 +10,17 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrNoUserExist = errors.New("no user exists")
-var ErrTicketExpired = errors.New("ticket expired")
-var ErrEmailAlreadyUsed = errors.New("email already used")
+var (
+	ErrNoUserExist      = errors.New("no user exists")
+	ErrTicketExpired    = errors.New("ticket expired")
+	ErrEmailAlreadyUsed = errors.New("email already used")
+)
+
+func (d *DB) GetUserById(userId int64) (*model.User, error) {
+	user := &model.User{}
+	err := d.DB.Where("id = ?", userId).First(user).Error
+	return user, err
+}
 
 func (d *DB) GetUserByEmail(email string) (user *model.User, err error) {
 	user = &model.User{}
@@ -70,7 +78,7 @@ func (d *DB) CreateTicketByEmail(email string) (*binaryuuid.UUID, error) {
 }
 
 func (d *DB) RemoveTicket(ticketUUID binaryuuid.UUID) error {
-	return nil
+	return d.DB.Where("uuid = ?", ticketUUID).Delete(&model.Ticket{}).Error
 }
 
 func (d *DB) IsTicketAvailable(ticketUUID binaryuuid.UUID) (bool, error) {

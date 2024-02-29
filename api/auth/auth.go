@@ -1,10 +1,8 @@
 package authapi
 
 import (
-	"encoding/base64"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/capdale/was/api"
 	"github.com/capdale/was/auth"
@@ -19,10 +17,6 @@ type database interface {
 type AuthAPI struct {
 	DB   database
 	Auth *auth.Auth
-}
-
-type RefreshTokenReq struct {
-	RefreshToken *string `json:"refresh_token" binding:"required"`
 }
 
 var (
@@ -55,18 +49,18 @@ func CheckState(ctx *gin.Context) error {
 }
 
 func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	tokenString := ctx.MustGet("token").(string)
-	a.Auth.SetBlacklistByToken(claims)
-	err := a.Auth.Store.SetBlacklist(tokenString, time.Until(claims.ExpiresAt.Time))
-	if err != nil {
-		api.BasicInternalServerError(ctx)
-		logger.Logger.ErrorWithCTX(ctx, "set token blacklist", err)
+	accessToken := ctx.Param("access_token")
+	refreshToken := ctx.Param("refresh_token")
+	if err := a.Auth.BlackToken(&accessToken, &refreshToken); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.Logger.ErrorWithCTX(ctx, "black token", err)
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "ok",
-	})
+	ctx.Status(http.StatusOK)
+}
+
+type RefreshTokenReq struct {
+	RefreshToken *string `json:"refresh_token" binding:"required"`
 }
 
 func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
@@ -79,14 +73,8 @@ func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 	}
 
 	userAgent := ctx.Request.UserAgent()
-	oldRefreshToken, err := base64.StdEncoding.DecodeString(*form.RefreshToken)
-	if err != nil {
-		api.BasicBadRequestError(ctx)
-		logger.Logger.ErrorWithCTX(ctx, "binding refresh token", err)
-		return
-	}
 
-	newToken, newRefreshToken, err := a.Auth.RefreshToken(&oldRefreshToken, &userAgent)
+	newToken, newRefreshToken, err := a.Auth.RefreshToken(*form.RefreshToken, &userAgent)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.Logger.ErrorWithCTX(ctx, "refresh token failed", err)
@@ -94,7 +82,7 @@ func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  newToken,
-		"refresh_token": base64.StdEncoding.EncodeToString(*newRefreshToken),
+		"refresh_token": newRefreshToken,
 	})
 }
 

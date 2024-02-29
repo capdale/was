@@ -9,11 +9,18 @@ import (
 
 var ErrInvalidInput = errors.New("invalid input")
 
-func (d *DB) CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID) error {
-	collections := []model.ArticleCollection{}
+func (d *DB) CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error {
+	collections := make([]model.ArticleCollection, len(*collectionUUIDs))
+	for i, cuid := range *collectionUUIDs {
+		collections[i] = model.ArticleCollection{CollectionUUID: cuid, Order: (*collectionOrder)[i]}
+	}
 
-	for _, cuid := range *collectionUUIDs {
-		collections = append(collections, model.ArticleCollection{CollectionUUID: cuid})
+	images := make([]*model.ArticleImage, len(*imageUUIDs))
+	for i, imageUUID := range *imageUUIDs {
+		images[i] = &model.ArticleImage{
+			ImageUUID: imageUUID,
+			Order:     uint8(i),
+		}
 	}
 
 	return d.DB.Create(&model.Article{
@@ -21,26 +28,16 @@ func (d *DB) CreateNewArticle(userId int64, title string, content string, collec
 		Title:              title,
 		Content:            content,
 		ArticleCollections: collections,
+		ArticleImages:      &images,
 	}).Error
 }
 
 func (d *DB) GetArticle(userId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
 	article := &model.ArticleAPI{}
-	err := d.DB.Model(&model.Article{}).Where("user_id = ? AND link_id = ?", userId, linkId).First(article).Error
+	err := d.DB.Model(&model.Article{}).Preload("ArticleCollections").Preload("ArticleImages").Where("user_id = ? AND link_id = ?", userId, linkId).First(article).Error
 	if err != nil {
 		return nil, err
 	}
-
-	articleCollections := &[]model.ArticleCollection{}
-	if err = d.DB.Select("collection_uuid").Where("article_id = ?", article.Id).Find(articleCollections).Error; err != nil {
-		return nil, err
-	}
-
-	articleCollectionUUIDs := make([]binaryuuid.UUID, len(*articleCollections))
-	for i, articleCollection := range *articleCollections {
-		articleCollectionUUIDs[i] = articleCollection.CollectionUUID
-	}
-	article.ArticleCollectionUUIDs = articleCollectionUUIDs
 	return article, err
 }
 
@@ -65,7 +62,7 @@ func (d *DB) GetArticlesByUserUUID(userUUID binaryuuid.UUID, offset int, limit i
 		return nil, err
 	}
 	articles := make([]model.ArticleAPI, limit)
-	if err = d.DB.Model(&model.Article{}).Preload("ArticleCollections").Where("user_id = ?", userId).Offset(offset).Limit(limit).Find(&articles).Error; err != nil {
+	if err = d.DB.Model(&model.Article{}).Where("user_id = ?", userId).Offset(offset).Limit(limit).Find(&articles).Error; err != nil {
 		return nil, err
 	}
 	return &articles, nil

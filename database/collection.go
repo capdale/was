@@ -21,14 +21,15 @@ func (d *DB) GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (collection *m
 	return
 }
 
-func (d *DB) CreateCollection(collection *model.CollectionAPI, userId int64) (binaryuuid.UUID, error) {
+func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, collectionUUID binaryuuid.UUID) error {
 	c := &model.Collection{
 		UserId:          userId,
+		UUID:            collectionUUID,
 		CollectionIndex: collection.CollectionIndex,
 		Geolocation:     collection.Geolocation,
 	}
 	err := d.DB.Create(c).Error
-	return c.UUID, err
+	return err
 }
 
 // func (d *DB) GetCollectionIdsByUUIDs(userId int64, collectionUUIDs *[]uuid.UUID) (*[]uint64, error) {

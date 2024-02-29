@@ -24,6 +24,7 @@ type User struct {
 	Collections []Collection `gorm:"foreignkey:UserId;references:Id"`
 	OriginUser  OriginUser   `gorm:"foreignkey:Id;references:Id"`
 	SocialUser  SocialUser   `gorm:"foreignkey:Id;references:Id"`
+	Tokens      *[]*Token    `gorm:"foreignKey:UserId;references:Id;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 type OriginUser struct {
@@ -38,12 +39,14 @@ type SocialUser struct {
 
 type Token struct {
 	// this token is same as jwt token, write when token generated, delete when token blacklist, query when refresh request comes in
-	IssuerUUID   binaryuuid.UUID `gorm:"index;not null"`
-	Token        string          `gorm:"type:varchar(225);not null"` // need type tuning
-	RefreshToken []byte          `gorm:"type:binary(64);index:refresh_token"`
+	Id           int64           `gorm:"primaryKey"`
+	UserId       int64           `gorm:"index;not null"`
+	UUID         binaryuuid.UUID `gorm:"index;not null"` // token uuid to identify token
+	RefreshToken []byte          `gorm:"size:60;"`
 	UserAgent    string          `gorm:"type:varchar(225)"`
-	ExpireAt     time.Time
-	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	NotBefore    time.Time       // jwt expired at, refresh token cannot be used before this, also used when make jwt token
+	ExpireAt     time.Time       // refresh token expired at, after can't refresh with this
+	CreatedAt    time.Time       `gorm:"autoCreateTime"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

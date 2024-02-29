@@ -51,6 +51,11 @@ func (b *UUID) UnmarshalText(by []byte) error {
 	return err
 }
 
+// no error
+func (b UUID) MarshalBinary() ([]byte, error) {
+	return b[:], nil
+}
+
 func FromBytes(by []byte) (UUID, error) {
 	b, err := uuid.FromBytes(by)
 	nb := UUID(b)
@@ -62,4 +67,10 @@ func ValidateUUID(field reflect.Value) interface{} {
 		return valuer.String()
 	}
 	return nil
+}
+
+func NewRandom() (UUID, error) {
+	uuid, err := uuid.NewRandom()
+	buid := UUID(uuid)
+	return buid, err
 }

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/capdale/was/types/binaryuuid"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -17,12 +16,6 @@ type Collection struct {
 	Accuracy        float64         `gorm:"not null"`
 	OriginAt        time.Time       `gorm:"autoCreateTime"`
 	DeletedAt       gorm.DeletedAt
-}
-
-func (c *Collection) BeforeCreate(tx *gorm.DB) error {
-	uid, err := uuid.NewRandom()
-	c.UUID = binaryuuid.UUID(uid)
-	return err
 }
 
 type Geolocation struct {

@@ -20,6 +20,7 @@ type Article struct {
 	DeletedAt          gorm.DeletedAt
 	Tags               []ArticleTag
 	ViewCount          uint64
+	ArticleImages      *[]*ArticleImage    `gorm:"foreignKey:ArticleId;references:Id"`
 	ArticleCollections []ArticleCollection `gorm:"foreignKey:ArticleId;references:Id"`
 }
 
@@ -29,10 +30,16 @@ func (a *Article) BeforeCreate(tx *gorm.DB) error {
 	return err
 }
 
+type ArticleImage struct {
+	ArticleId uint64          `gorm:"index" json:"-"`
+	ImageUUID binaryuuid.UUID `gorm:"uuid;index:iid_uid,unique" json:"uuid"`
+	Order     uint8           `json:"order"`
+}
+
 type ArticleCollection struct {
 	ArticleId      uint64          `gorm:"index:id_cid_uid,unique" json:"-"`
 	CollectionUUID binaryuuid.UUID `gorm:"index:id_cid_uid,unique" json:"uuid"`
-	Collection     Collection      `gorm:"references:UUID"`
+	Order          uint8           `json:"order"`
 }
 
 type ArticleTag struct {
@@ -46,9 +53,10 @@ type ArticleComment struct {
 }
 
 type ArticleAPI struct {
-	Id                     uint64            `json:"-"`
-	Title                  string            `json:"title"`
-	Content                string            `json:"content"`
-	UpdateAt               time.Time         `json:"update_at"`
-	ArticleCollectionUUIDs []binaryuuid.UUID `json:"collections" gorm:"-"`
+	Id                 uint64               `json:"-"`
+	Title              string               `json:"title"`
+	Content            string               `json:"content"`
+	UpdateAt           time.Time            `json:"update_at"`
+	ArticleCollections []*ArticleCollection `json:"collections" gorm:"foreignKey:ArticleId;references:Id"`
+	ArticleImages      []*ArticleImage      `json:"images" gorm:"foreignKey:ArticleId;references:Id"`
 }

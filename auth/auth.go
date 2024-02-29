@@ -5,15 +5,14 @@ import (
 
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
-	"github.com/google/uuid"
 )
 
 type database interface {
+	CreateRefreshToken(userId int64, tokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expireAt time.Time, agent *string) error
+	IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[]byte) error
+	PopRefreshToken(refreshTokenUID *binaryuuid.UUID) (*model.Token, error)
+	GetUserById(userId int64) (user *model.User, err error)
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	SaveToken(issuerUUID binaryuuid.UUID, tokenString string, refreshToken *[]byte, agent *string) error
-	IfTokenExistRemoveElseErr(tokenString string, until time.Duration, blackToken func(string, time.Duration) error) error
-	PopTokenByRefreshToken(refreshToken *[]byte, transactionF func(string) error) (tokenString *string, err error)
-	QueryAllTokensByUserUUID(userUUID *uuid.UUID) (*[]*model.Token, error)
 }
 
 type store interface {
