@@ -25,7 +25,7 @@ func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, col
 	c := &model.Collection{
 		UserId:          userId,
 		UUID:            collectionUUID,
-		CollectionIndex: collection.CollectionIndex,
+		CollectionIndex: *collection.CollectionIndex,
 		Geolocation:     collection.Geolocation,
 	}
 	err := d.DB.Create(c).Error
