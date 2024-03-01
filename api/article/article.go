@@ -24,6 +24,7 @@ type storage interface {
 }
 
 type database interface {
+	IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID) error
 	GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetArticle(writerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
@@ -45,15 +46,19 @@ func New(d database, storage storage) *ArticleAPI {
 var ErrInvalidForm = errors.New("form is invalid")
 
 type createArticleForm struct {
-	Article      articleForm             `form:"article"`
-	ImageHeaders []*multipart.FileHeader `form:"image[]" json:"image[]"`
+	Article      articleForm             `form:"article" binding:"required"`
+	ImageHeaders []*multipart.FileHeader `form:"image[]"`
 }
 
 type articleForm struct {
-	Title           string   `form:"title" json:"title" binding:"required,min=4,max=32"`
-	Content         string   `form:"content" json:"content" binding:"required,min=8,max=512"`
-	CollectionUUIDs []string `form:"collections" json:"collections" binding:"required,min=1,max=10,dive,uuid"`
-	Order           []uint8  `form:"order" json:"order" binding:"required"` // provide order information where collection will be ordered in
+	Title           string           `form:"title" json:"title" binding:"required,min=4,max=32"`
+	Content         string           `form:"content" json:"content" binding:"required,min=8,max=512"`
+	CollectionInfos []collectionInfo `form:"collections" json:"collections" binding:"required,min=1"`
+}
+
+type collectionInfo struct {
+	UUID  string `form:"uuid" binding:"required,uuid"`
+	Order *uint8 `form:"order" binding:"required"`
 }
 
 var ErrInvalidOrder = errors.New("invalid order")
@@ -68,26 +73,18 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 	}
 
 	imageCount := len(form.ImageHeaders)
-	collectionCount := uint8(len(form.Article.CollectionUUIDs))
-	if collectionCount != uint8(len(form.Article.Order)) {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid form"})
-		logger.ErrorWithCTX(ctx, "order / image count is not equal", nil)
-		return
-	}
-
-	for _, order := range form.Article.Order {
-		if order > collectionCount { // uint8, so no need to check sign of number
+	collectionCount := uint8(len(form.Article.CollectionInfos))
+	collectionUUIDs := make([]binaryuuid.UUID, len(form.Article.CollectionInfos))
+	orders := make([]uint8, len(form.Article.CollectionInfos))
+	for i, collectionInfo := range form.Article.CollectionInfos {
+		if *collectionInfo.Order > collectionCount { // uint8, so no need to check sign of number
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request, order is invalid"})
 			logger.ErrorWithCTX(ctx, "order invalid", ErrInvalidOrder)
 			return
 		}
-	}
-
-	collectionUUIDs := make([]binaryuuid.UUID, len(form.Article.CollectionUUIDs))
-	for i, cuidStr := range form.Article.CollectionUUIDs {
-		// validate while bind (Validator)
-		cuid := binaryuuid.MustParse(cuidStr)
+		cuid := binaryuuid.MustParse(collectionInfo.UUID)
 		collectionUUIDs[i] = cuid
+		orders[i] = *collectionInfo.Order
 	}
 
 	imageUUIDs := make([]binaryuuid.UUID, imageCount)
@@ -103,6 +100,19 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 
 	// no check uuids duplicated, since uuidv4 duplicate probability is very low, err when insert to DB with unique key
 
+	// check collection is owned
+	userId, err := a.d.GetUserIdByUUID(claims.UUID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		logger.ErrorWithCTX(ctx, "get userid by uuid", err)
+		return
+	}
+	if err = a.d.IsCollectionOwned(userId, &collectionUUIDs); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
+		logger.ErrorWithCTX(ctx, "bad request", err)
+		return
+	}
+
 	// upload image first, for consistency, if database write success and imag write file, need to rollback but rollback can be also failed. Then its hard to track and recover
 	if err := a.uploadImagesWithUUID(ctx, &imageUUIDs, &form.ImageHeaders); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
@@ -110,14 +120,7 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	userId, err := a.d.GetUserIdByUUID(claims.UUID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		logger.ErrorWithCTX(ctx, "get userid by uuid", err)
-		return
-	}
-
-	if err := a.d.CreateNewArticle(userId, form.Article.Title, form.Article.Content, &collectionUUIDs, &imageUUIDs, &form.Article.Order); err != nil {
+	if err := a.d.CreateNewArticle(userId, form.Article.Title, form.Article.Content, &collectionUUIDs, &imageUUIDs, &orders); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 		logger.ErrorWithCTX(ctx, "create new article", err)
 		return

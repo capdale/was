@@ -10,8 +10,8 @@ func (a *Auth) AuthorizeRequiredMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		tokenString, err := TokenFromRequest(ctx.Request)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"message": "invalid request",
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": "no token",
 			})
 			return
 		}

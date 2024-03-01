@@ -7,7 +7,27 @@ import (
 	"github.com/capdale/was/types/binaryuuid"
 )
 
-var ErrInvalidInput = errors.New("invalid input")
+var (
+	ErrInvalidInput      = errors.New("invalid input")
+	ErrInvalidPermission = errors.New("invalid permission")
+)
+
+func (d *DB) IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID) error {
+	var count int64
+	querys := make([]int64, len(*collectionUUIDs))
+	for i := 0; i < len(*collectionUUIDs); i++ {
+		querys[i] = userId
+	}
+
+	if err := d.DB.Model(&model.Collection{}).Where("user_id = ? AND uuid = ?", querys, *collectionUUIDs).Count(&count).Error; err != nil {
+		return err
+	}
+
+	if int(count) != len(*collectionUUIDs) {
+		return ErrInvalidPermission
+	}
+	return nil
+}
 
 func (d *DB) CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error {
 	collections := make([]*model.ArticleCollection, len(*collectionUUIDs))

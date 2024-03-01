@@ -24,7 +24,7 @@ type User struct {
 	Collections []Collection `gorm:"foreignkey:UserId;references:Id"`
 	OriginUser  OriginUser   `gorm:"foreignkey:Id;references:Id"`
 	SocialUser  SocialUser   `gorm:"foreignkey:Id;references:Id"`
-	Tokens      *[]*Token    `gorm:"foreignKey:UserId;references:Id;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Tokens      *[]*Token    `gorm:"foreignKey:UserId;references:Id;constraint:OnUpdate:SET NULL,OnDelete:CASCADE"`
 }
 
 type OriginUser struct {
@@ -41,7 +41,7 @@ type Token struct {
 	// this token is same as jwt token, write when token generated, delete when token blacklist, query when refresh request comes in
 	Id           int64           `gorm:"primaryKey"`
 	UserId       int64           `gorm:"index;not null"`
-	UUID         binaryuuid.UUID `gorm:"index;not null"` // token uuid to identify token
+	UUID         binaryuuid.UUID `gorm:"index"` // token uuid to identify token
 	RefreshToken []byte          `gorm:"size:60;"`
 	UserAgent    string          `gorm:"type:varchar(225)"`
 	NotBefore    time.Time       // jwt expired at, refresh token cannot be used before this, also used when make jwt token
@@ -59,4 +59,10 @@ type Ticket struct {
 	Email     string          `gorm:"size:64;not null"`
 	UUID      binaryuuid.UUID `gorm:"uniqueIndex;not null"`
 	CreatedAt time.Time       `gorm:"autoCreateTime"`
+}
+
+func (t *Ticket) BeforeCreate(tx *gorm.DB) error {
+	uid, err := uuid.NewRandom()
+	t.UUID = binaryuuid.UUID(uid)
+	return err
 }

@@ -19,10 +19,10 @@ type Collection struct {
 }
 
 type Geolocation struct {
-	Longtitude float64 `json:"longtitude" binding:"required"`
-	Latitude   float64 `json:"latitude" binding:"required"`
-	Altitude   float64 `json:"altitude" binding:"required"`
-	Accuracy   float64 `json:"acc" binding:"required"`
+	Longtitude *float64 `json:"longtitude" binding:"required"`
+	Latitude   *float64 `json:"latitude" binding:"required"`
+	Altitude   *float64 `json:"altitude" binding:"required"`
+	Accuracy   *float64 `json:"acc" binding:"required"`
 }
 
 type CollectionUID struct {
@@ -30,7 +30,7 @@ type CollectionUID struct {
 }
 
 type CollectionAPI struct {
-	CollectionIndex int64       `json:"index" binding:"required"`
+	CollectionIndex *int64      `json:"index" binding:"required"`
 	Geolocation     Geolocation `json:"geolocation" gorm:"embedded"`
 	OriginAt        *time.Time  `json:"datetime,omitempty"`
 }

@@ -45,7 +45,7 @@ type Collection = model.CollectionAPI
 
 type getCollectionform struct {
 	Offset *int `form:"offset" binding:"required,min=0"`
-	Limit  int  `form:"limit" binding:"required,min=1,max=100"`
+	Limit  *int `form:"limit" binding:"required,min=1,max=100"` // this not need pointer (because min is 1 never be 0), but for consistency
 }
 
 type getCollectionRes struct {
@@ -67,7 +67,7 @@ func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 		return
 	}
 
-	collections, err := a.DB.GetCollectionUUIDs(userId, *form.Offset, form.Limit)
+	collections, err := a.DB.GetCollectionUUIDs(userId, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "db get collections", err)
@@ -82,13 +82,14 @@ func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
 
 type createCollectionForm struct {
 	Image *multipart.FileHeader `form:"image" binding:"required"`
-	Info  Collection            `form:"info" binding:"required"`
+	Info  Collection            `form:"info" json:"info" binding:"required"`
 }
 
 func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	form := &createCollectionForm{}
 	if err := ctx.Bind(form); err != nil {
+		api.BasicBadRequestError(ctx)
 		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
@@ -122,6 +123,8 @@ func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 	// s3 upload
 	multipartFile, err := form.Image.Open()
 	if err != nil {
+		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "image upload", err)
 		return
 	}
 	defer multipartFile.Close()
