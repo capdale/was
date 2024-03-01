@@ -20,8 +20,8 @@ type Article struct {
 	DeletedAt          gorm.DeletedAt
 	Tags               []*ArticleTag
 	ViewCount          uint64
-	ArticleImages      *[]*ArticleImage     `gorm:"foreignKey:ArticleId;references:Id"`
-	ArticleCollections []*ArticleCollection `gorm:"foreignKey:ArticleId;references:Id"`
+	ArticleImages      *[]*ArticleImage     `gorm:"foreignKey:ArticleId;references:Id;contraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	ArticleCollections []*ArticleCollection `gorm:"foreignKey:ArticleId;references:Id;contraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 func (a *Article) BeforeCreate(tx *gorm.DB) error {
@@ -32,13 +32,13 @@ func (a *Article) BeforeCreate(tx *gorm.DB) error {
 
 type ArticleImage struct {
 	ArticleId uint64          `gorm:"index" json:"-"`
-	ImageUUID binaryuuid.UUID `gorm:"uuid;index:iid_uid,unique" json:"uuid"`
+	ImageUUID binaryuuid.UUID `gorm:"uuid;index" json:"uuid"`
 	Order     uint8           `json:"order"`
 }
 
 type ArticleCollection struct {
-	ArticleId      uint64          `gorm:"index:id_cid_uid,unique" json:"-"`
-	CollectionUUID binaryuuid.UUID `gorm:"index:id_cid_uid,unique" json:"uuid"`
+	ArticleId      uint64          `gorm:"index" json:"-"`
+	CollectionUUID binaryuuid.UUID `gorm:"index" json:"uuid"`
 	Order          uint8           `json:"order"`
 }
 
