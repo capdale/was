@@ -8,7 +8,6 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/capdale/was/auth"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
@@ -19,8 +18,7 @@ import (
 var logger = baselogger.Logger
 
 type storage interface {
-	UploadJPGs(ctx context.Context, filenames *[]string, readers *[]io.Reader) error
-	DeleteJPG(filename string) (*s3.DeleteObjectOutput, error)
+	UploadArticleJPGs(ctx context.Context, uuids *[]binaryuuid.UUID, readers *[]io.Reader) error
 }
 
 type database interface {

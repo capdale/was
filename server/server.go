@@ -14,7 +14,9 @@ import (
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
 	"github.com/capdale/was/logger"
-	"github.com/capdale/was/s3"
+	"github.com/capdale/was/storage"
+	localstorage "github.com/capdale/was/storage/local"
+	"github.com/capdale/was/storage/s3"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -77,7 +79,12 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		return nil, err
 	}
 
-	s3storage, err := s3.New(&config.S3)
+	var storage storage.Storage
+	if config.Storage.Local != nil {
+		storage, err = localstorage.New(config.Storage.Local.BaseDir)
+	} else {
+		storage, err = s3.New(config.Storage.S3)
+	}
 	if err != nil {
 		return
 	}
@@ -91,7 +98,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		})
 	})
 
-	collectAPI := collect.New(d, s3storage)
+	collectAPI := collect.New(d, storage)
 
 	collectRouter := r.Group("/collection").Use(auth.AuthorizeRequiredMiddleware())
 	{
@@ -134,7 +141,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		reportRouter.POST("/etc", reportAPI.PostReportEtcHandler)
 	}
 
-	articleAPI := articleAPI.New(d, s3storage)
+	articleAPI := articleAPI.New(d, storage)
 	articleRouter := r.Group("/article")
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)

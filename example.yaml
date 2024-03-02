@@ -45,8 +45,12 @@ oauth:
     secret: "client secret"
     redirect: "redirect url"
 
-s3:
-  region: "region"
-  bucketName: "name"
-  id: "id"
-  key: "key"
+storage:
+  local:
+    baseDirectory: "base directory path"
+
+  s3:
+    region: "region"
+    bucketName: "name"
+    id: "id"
+    key: "key"
