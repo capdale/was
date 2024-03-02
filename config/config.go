@@ -1,10 +1,13 @@
 package config
 
 import (
+	"errors"
 	"os"
 
 	"gopkg.in/yaml.v3"
 )
+
+var ErrInvalidConfig = errors.New("invalid config file")
 
 type Config struct {
 	Service Service `yaml:"service"`
@@ -13,7 +16,7 @@ type Config struct {
 	Rpc     Rpc     `yaml:"rpc"`
 	Key     Key     `yaml:"key"`
 	Oauth   Oauth   `yaml:"oauth"`
-	S3      S3      `yaml:"s3"`
+	Storage Storage `yaml:"storage"`
 }
 
 type Service struct {
@@ -79,6 +82,15 @@ type Github struct {
 	Redirect string `yaml:"redirect"`
 }
 
+type Storage struct {
+	S3    *S3    `yaml:"s3,omitempty"`
+	Local *Local `yaml:"local,omitempty"`
+}
+
+type Local struct {
+	BaseDir string `yaml:"baseDirectory"`
+}
+
 type S3 struct {
 	Name   string `yaml:"bucketName"`
 	Region string `yaml:"region"`
@@ -94,5 +106,9 @@ func ParseConfig(filepath string) (c *Config, err error) {
 
 	c = &Config{}
 	err = yaml.Unmarshal(buf, c)
+	if c.Storage.Local == nil && c.Storage.S3 == nil {
+		err = ErrInvalidConfig
+		return
+	}
 	return
 }
