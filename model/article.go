@@ -14,7 +14,7 @@ type Article struct {
 	User               User            `gorm:"references:id"`
 	LinkID             binaryuuid.UUID `gorm:"index:uid_linkid_idx,unique;not null;"`
 	Title              string          `gorm:"type:varchar(32);not null"`
-	Content            string          `gorm:"type:LONGTEXT;"`
+	Content            string          `gorm:"type:TEXT;"`
 	CreateAt           time.Time       `gorm:"autoCreateTime"`
 	UpdateAt           time.Time       `gorm:"autoUpdateTime"`
 	DeletedAt          gorm.DeletedAt
