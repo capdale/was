@@ -3,6 +3,7 @@ package localstorage
 import (
 	"context"
 	"io"
+	"path"
 
 	"github.com/capdale/was/storage"
 	"github.com/capdale/was/types/binaryuuid"
@@ -17,7 +18,7 @@ func (ls *LocalStorage) UploadArticleJPGs(ctx context.Context, uuids *[]binaryuu
 	filepaths := make([]string, len(*uuids))
 
 	for i, uuid := range *uuids {
-		filepaths[i] = uuid.String() + ".jpg"
+		filepaths[i] = path.Join(articleDirPath, uuid.String()+".jpg")
 	}
 
 	if err := ls.uploadMultiple(ctx, &filepaths, readers); err != nil {
@@ -29,7 +30,7 @@ func (ls *LocalStorage) UploadArticleJPGs(ctx context.Context, uuids *[]binaryuu
 func (ls *LocalStorage) DeleteArticleJPGs(ctx context.Context, uuids *[]binaryuuid.UUID) error {
 	filepaths := make([]string, len(*uuids))
 	for i, uuid := range *uuids {
-		filepaths[i] = uuid.String() + ".jpg"
+		filepaths[i] = path.Join(articleDirPath, uuid.String()+".jpg")
 	}
 
 	if err := ls.deleteMultiple(ctx, &filepaths); err != nil {
