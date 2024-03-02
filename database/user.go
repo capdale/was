@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/capdale/was/model"
@@ -142,7 +141,6 @@ func (d *DB) GetOriginUserUUID(username string, password string) (*binaryuuid.UU
 	if err := d.DB.Model(&model.User{}).Select("users.uuid", "origin_users.hashed").Joins("INNER JOIN origin_users ON origin_users.id = users.id").Where("username = ? AND account_type = ?", username, model.AccountTypeOrigin).First(user).Error; err != nil {
 		return nil, err
 	}
-	fmt.Println(user)
 	if err := bcrypt.CompareHashAndPassword(user.Hashed, []byte(password)); err != nil {
 		return nil, err
 	}
