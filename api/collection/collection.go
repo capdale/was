@@ -6,7 +6,6 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/capdale/was/api"
 	"github.com/capdale/was/auth"
 	baseLogger "github.com/capdale/was/logger"
@@ -18,8 +17,8 @@ import (
 var logger = baseLogger.Logger
 
 type storage interface {
-	UploadJPG(ctx context.Context, filename string, reader io.Reader) (*s3.PutObjectOutput, error)
-	DeleteJPG(filename string) (*s3.DeleteObjectOutput, error)
+	UploadCollectionJPG(ctx context.Context, uuid binaryuuid.UUID, reader io.Reader) error
+	DeleteCollectionJPG(ctx context.Context, uuid binaryuuid.UUID) error
 }
 
 type database interface {
@@ -129,9 +128,7 @@ func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 	}
 	defer multipartFile.Close()
 
-	collectionUUIDStr := collectionUUID.String()
-	_, err = a.Storage.UploadJPG(ctx, collectionUUIDStr, multipartFile)
-	if err != nil {
+	if err := a.Storage.UploadCollectionJPG(ctx, collectionUUID, multipartFile); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "upload jpg", err)
 		return
@@ -141,7 +138,7 @@ func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create collection with useruuid", err)
-		go a.pushDeleteJPGQueue(collectionUUIDStr)
+		go a.Storage.DeleteCollectionJPG(context.Background(), collectionUUID) // send to delete queue
 		return
 	}
 

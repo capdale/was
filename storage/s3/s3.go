@@ -9,14 +9,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/capdale/was/config"
+	"github.com/capdale/was/storage"
 )
 
-type BasicBucket struct {
+type S3Bucket struct {
 	client     *s3.Client
 	bucketName *string
 }
 
-func New(config *config.S3) (*BasicBucket, error) {
+// must implement storage interface
+var _ storage.Storage = (*S3Bucket)(nil)
+
+func New(config *config.S3) (*S3Bucket, error) {
 	creds := credentials.NewStaticCredentialsProvider(config.Id, config.Key, "")
 	cfg, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithRegion(config.Region), awsConfig.WithCredentialsProvider(creds))
 	if err != nil {
@@ -28,5 +32,5 @@ func New(config *config.S3) (*BasicBucket, error) {
 		fmt.Println(err.Error())
 	}
 
-	return &BasicBucket{client: s3Client, bucketName: aws.String(config.Name)}, nil
+	return &S3Bucket{client: s3Client, bucketName: aws.String(config.Name)}, nil
 }
