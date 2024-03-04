@@ -18,6 +18,7 @@ import (
 var logger = baselogger.Logger
 
 type storage interface {
+	GetArticleJPG(ctx context.Context, uuid binaryuuid.UUID) (*[]byte, error)
 	UploadArticleJPGs(ctx context.Context, uuids *[]binaryuuid.UUID, readers *[]io.Reader) error
 }
 
@@ -27,6 +28,7 @@ type database interface {
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetArticle(writerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
+	HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error
 }
 
 type ArticleAPI struct {
@@ -217,4 +219,36 @@ func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, article)
+}
+
+type getArticleImageHandlerUri struct {
+	ImageUUID string `uri:"uuid" binding:"required,uuid"`
+}
+
+func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
+	uri := &getArticleImageHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	claimsPtr, isExist := ctx.Get("claims")
+	var claimerUUID *binaryuuid.UUID
+	if isExist {
+		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
+	}
+	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
+	if err := a.d.HasAccessPermissionArticleImage(claimerUUID, imageUUID); err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "check permission", err)
+		return
+	}
+	imageBytes, err := a.Storage.GetArticleJPG(ctx, imageUUID)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "get jpg", err)
+		return
+	}
+	ctx.Data(http.StatusOK, "image/jpeg", *imageBytes)
 }

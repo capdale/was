@@ -105,6 +105,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
 		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
+		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
 
 	authAPI := authapi.New(d, auth)
@@ -147,6 +148,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
 		articleRouter.GET("/get-links/:useruuid", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
+		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
 	}
 
 	return r, nil

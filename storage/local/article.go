@@ -3,6 +3,7 @@ package localstorage
 import (
 	"context"
 	"io"
+	"os"
 	"path"
 
 	"github.com/capdale/was/storage"
@@ -10,6 +11,18 @@ import (
 )
 
 const articleDirPath = "/articleimg"
+
+func (ls *LocalStorage) GetArticleJPG(ctx context.Context, uuid binaryuuid.UUID) (*[]byte, error) {
+	filepath := path.Join(ls.baseDir, articleDirPath, uuid.String()+".jpg")
+	if _, err := os.Stat(filepath); err != nil {
+		return nil, err
+	}
+	file, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
 
 func (ls *LocalStorage) UploadArticleJPGs(ctx context.Context, uuids *[]binaryuuid.UUID, readers *[]io.Reader) error {
 	if len(*uuids) != len(*readers) {
