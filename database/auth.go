@@ -31,10 +31,14 @@ func (d *DB) CreateRefreshToken(userId int64, refreshTokenUID *binaryuuid.UUID, 
 func (d *DB) PopRefreshToken(refreshTokenUID *binaryuuid.UUID) (*model.Token, error) {
 	token := &model.Token{}
 	err := d.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("uuid = ?", refreshTokenUID).First(token).Error; err != nil {
+		if err := tx.
+			Where("uuid = ?", refreshTokenUID).
+			First(token).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("id = ?", token.Id).Delete(&model.Token{}).Error; err != nil {
+		if err := tx.
+			Where("id = ?", token.Id).
+			Delete(&model.Token{}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -44,7 +48,9 @@ func (d *DB) PopRefreshToken(refreshTokenUID *binaryuuid.UUID) (*model.Token, er
 }
 
 func (d *DB) RemoveRefreshToken(refreshToken *[]byte) error {
-	result := d.DB.Where("refresh_token = ?", refreshToken).Delete(&model.Token{})
+	result := d.DB.
+		Where("refresh_token = ?", refreshToken).
+		Delete(&model.Token{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -56,7 +62,9 @@ func (d *DB) RemoveRefreshToken(refreshToken *[]byte) error {
 
 func (d *DB) QueryAllTokensByUserId(userId int64) (*[]*model.Token, error) {
 	tokenMs := []model.Token{}
-	if err := d.DB.Where("id = ?", userId).Find(&tokenMs).Error; err != nil {
+	if err := d.DB.
+		Where("id = ?", userId).
+		Find(&tokenMs).Error; err != nil {
 		return nil, err
 	}
 
@@ -76,12 +84,16 @@ func (d *DB) QueryAllTokensByUserId(userId int64) (*[]*model.Token, error) {
 }
 
 func (d *DB) RemoveTokens(refreshTokens *[]*[]byte) error {
-	err := d.DB.Where("refresh_token = ?", refreshTokens).Delete(&model.Token{}).Error
+	err := d.DB.
+		Where("refresh_token = ?", refreshTokens).
+		Delete(&model.Token{}).Error
 	return err
 }
 
 func (d *DB) IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[]byte) error {
-	result := d.DB.Where("not_before = ? AND refresh_token = ? AND user_id = ?", tokenExpiredAt, refreshToken, userId).First(&model.Token{})
+	result := d.DB.
+		Where("not_before = ? AND refresh_token = ? AND user_id = ?", tokenExpiredAt, refreshToken, userId).
+		First(&model.Token{})
 	if result.Error != nil {
 		return result.Error
 	}
