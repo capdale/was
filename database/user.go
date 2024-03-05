@@ -16,20 +16,20 @@ var (
 	ErrEmailAlreadyUsed = errors.New("email already used")
 )
 
-func (d *DB) ExchangeIDs2UUIDs(ids *[]int64) (*[]binaryuuid.UUID, error) {
-	uuids := make([]binaryuuid.UUID, len(*ids))
+func (d *DB) ExchangeIDs2Names(ids *[]int64) (*[]string, error) {
+	names := make([]string, len(*ids))
 	result := d.DB.
 		Model(&model.User{}).
-		Select("uuid").
-		Where("id = ?", ids).
-		Find(&uuids)
+		Select("username").
+		Where("id = ?", *ids).
+		Find(&names)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	if result.RowsAffected != int64(len(*ids)) {
 		return nil, ErrInvalidInput
 	}
-	return &uuids, nil
+	return &names, nil
 }
 
 func (d *DB) GetUserById(userId int64) (*model.User, error) {
@@ -69,6 +69,17 @@ func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error) {
 	if err := d.DB.
 		Select("id").
 		Where("uuid = ?", userUUID).
+		First(user).Error; err != nil {
+		return 0, err
+	}
+	return user.Id, nil
+}
+
+func (d *DB) GetUserIdByName(username string) (int64, error) {
+	user := &model.User{}
+	if err := d.DB.
+		Select("id").
+		Where("username = ?", username).
 		First(user).Error; err != nil {
 		return 0, err
 	}
@@ -185,33 +196,4 @@ func (d *DB) GetOriginUserUUID(username string, password string) (*binaryuuid.UU
 		return nil, err
 	}
 	return &user.UUID, nil
-}
-
-func (d *DB) GetFollowers(userUUID binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
-	followers := []*int{}
-	if err := d.DB.
-		Model(&model.UserFollow{}).
-		Select("user_follows.target_id").
-		Joins("JOIN users ON users.id = user_follows.user_id").
-		Where("users.uuid = ?", userUUID).
-		Offset(offset).
-		Limit(limit).
-		Find(&followers).Error; err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
-func (d *DB) GetFollowings(userUUID binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
-
-	return nil, nil
-}
-
-func (d *DB) RequestFollow(claimer binaryuuid.UUID, target binaryuuid.UUID) error {
-
-	return nil
-}
-
-func (d *DB) IsUserPublic(userUUID binaryuuid.UUID) (bool, error) {
-	return false, nil
 }

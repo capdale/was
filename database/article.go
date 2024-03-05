@@ -55,13 +55,13 @@ func (d *DB) CreateNewArticle(userId int64, title string, content string, collec
 	}).Error
 }
 
-func (d *DB) GetArticle(userId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
+func (d *DB) GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
 	article := &model.ArticleAPI{}
 	err := d.DB.
 		Model(&model.Article{}).
 		Preload("ArticleCollections").
 		Preload("ArticleImages").
-		Where("user_id = ? AND link_id = ?", userId, linkId).
+		Where("link_id = ?", linkId).
 		First(article).Error
 	if err != nil {
 		return nil, err
