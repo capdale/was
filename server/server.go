@@ -10,6 +10,7 @@ import (
 	originAPI "github.com/capdale/was/api/auth/origin"
 	collect "github.com/capdale/was/api/collection"
 	reportAPI "github.com/capdale/was/api/report"
+	socialAPI "github.com/capdale/was/api/social"
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
@@ -146,9 +147,19 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	articleRouter := r.Group("/article")
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
-		articleRouter.GET("/get-links/:useruuid", articleAPI.GetUserArticleLinksHandler)
+		articleRouter.GET("/get-links/:username", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
+	}
+
+	socialAPI := socialAPI.New(d)
+	socialRouter := r.Group("/social")
+	{
+		// TODO: auth for secret account
+		socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+		socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		// request follow
+		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
 	}
 
 	return r, nil
