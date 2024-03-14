@@ -23,6 +23,7 @@ jobs:
 
       - name: Build docker image
         run: |
+          ls -al
           make docker-build-linux-amd64
           make docker-image-linux-amd64
 
