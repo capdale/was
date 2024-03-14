@@ -23,7 +23,6 @@ jobs:
 
       - name: Build docker image
         run: |
-          ls -al
           make docker-build-linux-amd64
           make docker-image-linux-amd64
 
@@ -32,4 +31,3 @@ jobs:
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker tag was:latest ${{ secrets.DOCKER_USERNAME }}/was
           docker push ${{ secrets.DOCKER_USERNAME }}/was
-          
