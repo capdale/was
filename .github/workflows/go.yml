@@ -1,0 +1,35 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create config file
+        run: |
+          touch ./config.yaml
+          echo "${{ secrets.CONFIG_YAML }}" >> ./config.yaml
+        shell: bash
+
+      - name: Build docker image
+        run: |
+          ls -al
+          make docker-build-linux-amd64
+          make docker-image-linux-amd64
+
+      - name: Push docker image
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker tag was:latest ${{ secrets.DOCKER_USERNAME }}/was
+          docker push ${{ secrets.DOCKER_USERNAME }}/was
+          
