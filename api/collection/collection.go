@@ -185,6 +185,13 @@ func (a *CollectAPI) GetCollectionImageHandler(ctx *gin.Context) {
 	if isExists {
 		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
 	}
+
+	// In beta version, only support authorized collection
+	if !isExists {
+		ctx.Status(http.StatusUnauthorized)
+		return
+	}
+
 	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
 	err := a.DB.HasAccessPermissionCollection(claimerUUID, imageUUID)
 	if err != nil {
