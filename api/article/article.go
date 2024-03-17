@@ -222,6 +222,13 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 	if isExist {
 		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
 	}
+
+	// In beta version, only support authorized
+	if !isExist {
+		ctx.Status(http.StatusUnauthorized)
+		return
+	}
+
 	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
 	if err := a.d.HasAccessPermissionArticleImage(claimerUUID, imageUUID); err != nil {
 		ctx.Status(http.StatusNotFound)
