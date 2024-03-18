@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/gin-gonic/autotls v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )
