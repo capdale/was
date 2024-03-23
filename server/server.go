@@ -10,7 +10,6 @@ import (
 	originAPI "github.com/capdale/was/api/auth/origin"
 	collect "github.com/capdale/was/api/collection"
 	reportAPI "github.com/capdale/was/api/report"
-	socialAPI "github.com/capdale/was/api/social"
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
@@ -24,7 +23,6 @@ import (
 	"github.com/gin-contrib/sessions/redis"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -93,7 +91,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	auth := auth.New(d, store)
 
 	r.GET("/", func(ctx *gin.Context) {
-		logger.Logger.InfoWithCTX(ctx, "log check", zap.String("asdf", "A"))
+		logger.Logger.InfoWithCTX(ctx, "log check")
 		ctx.JSON(http.StatusOK, gin.H{
 			"ok": "ok",
 		})
@@ -152,15 +150,15 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
 	}
 
-	socialAPI := socialAPI.New(d)
-	socialRouter := r.Group("/social")
-	{
-		// TODO: auth for secret account
-		socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
-		socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
-		// request follow
-		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
-	}
+	// socialAPI := socialAPI.New(d)
+	// socialRouter := r.Group("/social")
+	// {
+	// 	// TODO: auth for secret account
+	// 	socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+	// 	socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+	// 	// request follow
+	// 	socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
+	// }
 
 	return r, nil
 }
