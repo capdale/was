@@ -5,10 +5,8 @@ name: Docker push
 
 on:
   push:
-    branches:
-      - master
-    tags:
-      - "v*.*.*"
+    release:
+      types: [published]
 
 jobs:
   build:
