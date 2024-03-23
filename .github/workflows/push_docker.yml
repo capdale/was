@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - "v*.*.*"
 
 jobs:
   build:
@@ -14,20 +16,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:     
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
 
       - name: Create config file
         run: |
           touch ./config.yaml
           echo "${{ secrets.CONFIG_YAML }}" >> ./config.yaml
+          echo "${{ steps.meta.outputs.tags }}"
+          echo "${{ steps.meta.outputs.labels }}"
         shell: bash
 
-      - name: Build docker image
-        run: |
-          make docker-build-linux-amd64
-          make docker-image-linux-amd64
+      # - name: Build docker image
+      #   run: |
+      #     make docker-build-linux-amd64
+      #     make docker-image-linux-amd64
 
-      - name: Push docker image
-        run: |
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker tag was:latest ${{ secrets.DOCKER_USERNAME }}/was
-          docker push ${{ secrets.DOCKER_USERNAME }}/was
+      # - name: Push docker image
+      #   run: |
+      #     docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      #     docker tag was:latest ${{ secrets.DOCKER_USERNAME }}/was
+      #     docker push ${{ secrets.DOCKER_USERNAME }}/was
