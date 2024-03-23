@@ -92,10 +92,10 @@ type Local struct {
 }
 
 type S3 struct {
-	Name   string `yaml:"bucketName"`
-	Region string `yaml:"region"`
-	Id     string `yaml:"id"`
-	Key    string `yaml:"key"`
+	Name   string  `yaml:"bucketName"`
+	Region string  `yaml:"region"`
+	Id     *string `yaml:"id,omitempty"`
+	Key    *string `yaml:"key,omitempty"`
 }
 
 func ParseConfig(filepath string) (c *Config, err error) {

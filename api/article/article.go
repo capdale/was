@@ -18,6 +18,7 @@ import (
 var logger = baselogger.Logger
 
 type storage interface {
+	GetArticleJPG(ctx context.Context, uuid binaryuuid.UUID) (*[]byte, error)
 	UploadArticleJPGs(ctx context.Context, uuids *[]binaryuuid.UUID, readers *[]io.Reader) error
 }
 
@@ -25,8 +26,10 @@ type database interface {
 	IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID) error
 	GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	GetArticle(writerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
+	GetUserIdByName(username string) (int64, error)
+	GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
+	HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error
 }
 
 type ArticleAPI struct {
@@ -127,31 +130,29 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "ok"})
 }
 
-type getArticlesByUserUUIDUri struct {
-	UserUUIDStr string `uri:"useruuid" binding:"required,uuid"`
+type getArticleLinksUri struct {
+	Username string `uri:"username" binding:"required"`
 }
 
-type getArticlesByUserUUIDForm struct {
+type getArticleLinksForm struct {
 	Offset int `form:"offset,default=0" binding:"min=0"`
 	Limit  int `form:"limit,default=20" binding:"min=1,max=20"`
 }
 
 func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
-	form := &getArticlesByUserUUIDForm{}
+	form := &getArticleLinksForm{}
 	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "bind form", err)
 		return
 	}
 
-	uri := &getArticlesByUserUUIDUri{}
+	uri := &getArticleLinksUri{}
 	if err := ctx.BindUri(uri); err != nil {
 		logger.ErrorWithCTX(ctx, "bind uri", err)
 		return
 	}
 
-	// validate with Validator,
-	userUUID := binaryuuid.MustParse(uri.UserUUIDStr)
-	userId, err := a.d.GetUserIdByUUID(userUUID)
+	userId, err := a.d.GetUserIdByName(uri.Username)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get userid by uuid", err)
@@ -167,7 +168,7 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 
 	links := make([]string, len(*articles))
 	for i, article := range *articles {
-		links[i] = base64.URLEncoding.EncodeToString(append(userUUID[:], article[:]...))
+		links[i] = base64.URLEncoding.EncodeToString(article[:])
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"links": links})
@@ -182,39 +183,63 @@ func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	if len(linkBytes) != 32 {
+	if len(linkBytes) != 16 {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "link bytes error", nil)
 		return
 	}
 
-	userUUIDBytes := linkBytes[0:16]
-	linkIdBytes := linkBytes[16:]
-	userUUID, err := binaryuuid.FromBytes(userUUIDBytes)
-	if err != nil {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "parse user uuid", err)
-		return
-	}
-	linkId, err := binaryuuid.FromBytes(linkIdBytes)
+	linkId, err := binaryuuid.FromBytes(linkBytes)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "parse link id", err)
 		return
 	}
 
-	userId, err := a.d.GetUserIdByUUID(userUUID)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
-		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
-		return
-	}
-
-	article, err := a.d.GetArticle(userId, linkId)
+	article, err := a.d.GetArticle(linkId)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get article", err)
 		return
 	}
 	ctx.JSON(http.StatusOK, article)
+}
+
+type getArticleImageHandlerUri struct {
+	ImageUUID string `uri:"uuid" binding:"required,uuid"`
+}
+
+func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
+	uri := &getArticleImageHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	claimsPtr, isExist := ctx.Get("claims")
+	var claimerUUID *binaryuuid.UUID
+	if isExist {
+		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
+	}
+
+	// In beta version, only support authorized
+	if !isExist {
+		ctx.Status(http.StatusUnauthorized)
+		return
+	}
+
+	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
+	if err := a.d.HasAccessPermissionArticleImage(claimerUUID, imageUUID); err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "check permission", err)
+		return
+	}
+	imageBytes, err := a.Storage.GetArticleJPG(ctx, imageUUID)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "get jpg", err)
+		return
+	}
+	ctx.Data(http.StatusOK, "image/jpeg", *imageBytes)
 }

@@ -76,7 +76,7 @@ func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 
 	newToken, newRefreshToken, err := a.Auth.RefreshToken(*form.RefreshToken, &userAgent)
 	if err != nil {
-		api.BasicInternalServerError(ctx)
+		api.BasicUnAuthorizedError(ctx)
 		logger.Logger.ErrorWithCTX(ctx, "refresh token failed", err)
 		return
 	}

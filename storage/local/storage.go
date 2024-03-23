@@ -71,6 +71,7 @@ func (ls *LocalStorage) delete(ctx context.Context, filepath string) error {
 func (ls *LocalStorage) deleteMultiple(ctx context.Context, filepaths *[]string) error {
 	errGrp, errCtx := errgroup.WithContext(ctx)
 	for _, filepath := range *filepaths {
+		filepath := filepath
 		errGrp.Go(func() error { return ls.delete(errCtx, filepath) })
 	}
 	return errGrp.Wait()

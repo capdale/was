@@ -19,7 +19,10 @@ func (d *DB) IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID)
 		querys[i] = userId
 	}
 
-	if err := d.DB.Model(&model.Collection{}).Where("user_id = ? AND uuid = ?", querys, *collectionUUIDs).Count(&count).Error; err != nil {
+	if err := d.DB.
+		Model(&model.Collection{}).
+		Where("user_id = ? AND uuid = ?", querys, *collectionUUIDs).
+		Count(&count).Error; err != nil {
 		return err
 	}
 
@@ -52,9 +55,14 @@ func (d *DB) CreateNewArticle(userId int64, title string, content string, collec
 	}).Error
 }
 
-func (d *DB) GetArticle(userId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
+func (d *DB) GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
 	article := &model.ArticleAPI{}
-	err := d.DB.Model(&model.Article{}).Preload("ArticleCollections").Preload("ArticleImages").Where("user_id = ? AND link_id = ?", userId, linkId).First(article).Error
+	err := d.DB.
+		Model(&model.Article{}).
+		Preload("ArticleCollections").
+		Preload("ArticleImages").
+		Where("link_id = ?", linkId).
+		First(article).Error
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +74,10 @@ func (d *DB) GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]
 		return nil, ErrInvalidInput
 	}
 	articles := make([]model.Article, limit)
-	if err := d.DB.Select("LinkID").Where("user_id = ?", userId).Find(&articles).Error; err != nil {
+	if err := d.DB.
+		Select("LinkID").
+		Where("user_id = ?", userId).
+		Find(&articles).Error; err != nil {
 		return nil, err
 	}
 	links := make([]binaryuuid.UUID, len(articles))
@@ -82,8 +93,31 @@ func (d *DB) GetArticlesByUserUUID(userUUID binaryuuid.UUID, offset int, limit i
 		return nil, err
 	}
 	articles := make([]model.ArticleAPI, limit)
-	if err = d.DB.Model(&model.Article{}).Where("user_id = ?", userId).Offset(offset).Limit(limit).Find(&articles).Error; err != nil {
+	if err = d.DB.
+		Model(&model.Article{}).
+		Where("user_id = ?", userId).
+		Offset(offset).
+		Limit(limit).
+		Find(&articles).Error; err != nil {
 		return nil, err
 	}
 	return &articles, nil
+}
+
+func (d *DB) HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error {
+	if claimerUUID == nil {
+		return ErrInvalidPermission
+	}
+	userId, err := d.GetUserIdByUUID(*claimerUUID)
+	if err != nil {
+		return err
+	}
+	if err := d.DB.
+		Model(&model.ArticleImage{}).
+		Select("").
+		Joins("JOIN articles ON articles.id = article_images.id").
+		Where("article_images.image_uuid = ? AND articles.user_id = ?", articleImageUUID, userId).Error; err != nil {
+		return err
+	}
+	return nil
 }

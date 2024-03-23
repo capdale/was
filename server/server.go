@@ -23,7 +23,6 @@ import (
 	"github.com/gin-contrib/sessions/redis"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -92,7 +91,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	auth := auth.New(d, store)
 
 	r.GET("/", func(ctx *gin.Context) {
-		logger.Logger.InfoWithCTX(ctx, "log check", zap.String("asdf", "A"))
+		logger.Logger.InfoWithCTX(ctx, "log check")
 		ctx.JSON(http.StatusOK, gin.H{
 			"ok": "ok",
 		})
@@ -105,6 +104,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
 		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
+		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
 
 	authAPI := authapi.New(d, auth)
@@ -145,9 +145,20 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	articleRouter := r.Group("/article")
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
-		articleRouter.GET("/get-links/:useruuid", articleAPI.GetUserArticleLinksHandler)
+		articleRouter.GET("/get-links/:username", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
+		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
 	}
+
+	// socialAPI := socialAPI.New(d)
+	// socialRouter := r.Group("/social")
+	// {
+	// 	// TODO: auth for secret account
+	// 	socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+	// 	socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+	// 	// request follow
+	// 	socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
+	// }
 
 	return r, nil
 }

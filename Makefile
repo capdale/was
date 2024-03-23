@@ -7,10 +7,9 @@ DOCKER_RUN=docker run -v .:/src/app -w /src/app
 DOCKER_IMAGE=golang:latest
 
 
-
 # linux
 build-linux-amd64:
-	GOOS=linux GOARCH=amd64 go build -o ${BUILD_DIR}${APP_NAME}-linux-amd64
+	GOOS=linux GOARCH=amd64 go build -buildvcs=false -o ${BUILD_DIR}${APP_NAME}-linux-amd64
 
 build-linux-arm64:
 	GOOS=linux GOARCH=arm64 go build -o ${BUILD_DIR}${APP_NAME}-linux-arm64
@@ -39,14 +38,17 @@ build: build-linux-amd64
 # linux
 docker-build-linux-amd64:
 	${DOCKER_RUN} ${DOCKER_IMAGE} make build-linux-amd64
+	cp ${BUILD_DIR}${APP_NAME}-linux-amd64 ${DOCKER_DIR}
 
 docker-build-linux-arm64:
 	${DOCKER_RUN} ${DOCKER_IMAGE} make build-linux-arm64
+	cp ${BUILD_DIR}${APP_NAME}-linux-arm64 ${DOCKER_DIR}
 
 # window
 docker-build-windows-amd64:
 	${DOCKER_RUN} ${DOCKER_IMAGE} make build-widnows-amd64
-
+	cp ${BUILD_DIR}${APP_NAME}-windows-amd64 ${DOCKER_DIR}
+	
 # docker-build-windows-arm64:
 # 	${DOCKER_RUN} ${DOCKER_IMAGE} make build-widnows-arm64
 
@@ -59,6 +61,7 @@ docker-build: docker-build-linux-amd64
 # build docker image
 docker-image-linux-amd64:
 	cp ${BUILD_DIR}${APP_NAME}-linux-amd64 ${DOCKER_DIR}
+	cp config.yaml ${DOCKER_DIR}config.yaml
 	docker build --tag ${APP_NAME} ${DOCKER_DIR}.
 
 docker-image-linux-arm64:

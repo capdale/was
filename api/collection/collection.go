@@ -17,6 +17,7 @@ import (
 var logger = baseLogger.Logger
 
 type storage interface {
+	GetCollectionJPG(ctx context.Context, uuid binaryuuid.UUID) (*[]byte, error)
 	UploadCollectionJPG(ctx context.Context, uuid binaryuuid.UUID, reader io.Reader) error
 	DeleteCollectionJPG(ctx context.Context, uuid binaryuuid.UUID) error
 }
@@ -26,6 +27,7 @@ type database interface {
 	GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (*Collection, error)
 	CreateCollection(useId int64, collection *Collection, collectionUUID binaryuuid.UUID) error
+	HasAccessPermissionCollection(userUUID *binaryuuid.UUID, collectionUUID binaryuuid.UUID) error
 }
 
 type CollectAPI struct {
@@ -164,4 +166,44 @@ func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, collection)
+}
+
+type getCollectionImageUri struct {
+	ImageUUID string `uri:"uuid" binding:"required,uuid"`
+}
+
+func (a *CollectAPI) GetCollectionImageHandler(ctx *gin.Context) {
+	uri := &getCollectionImageUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	claimsPtr, isExists := ctx.Get("claims")
+	var claimerUUID *binaryuuid.UUID
+	if isExists {
+		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
+	}
+
+	// In beta version, only support authorized collection
+	if !isExists {
+		ctx.Status(http.StatusUnauthorized)
+		return
+	}
+
+	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
+	err := a.DB.HasAccessPermissionCollection(claimerUUID, imageUUID)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "check permission", err)
+		return
+	}
+	imageBytes, err := a.Storage.GetCollectionJPG(ctx, imageUUID)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "get jpg", err)
+		return
+	}
+	ctx.Data(http.StatusOK, "image/jpeg", *imageBytes)
 }
