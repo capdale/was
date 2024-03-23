@@ -4,9 +4,8 @@
 name: Docker push
 
 on:
-  push:
-    release:
-      types: [published]
+  release:
+    types: [published]
 
 jobs:
   build:
