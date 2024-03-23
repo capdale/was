@@ -20,6 +20,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/was
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
