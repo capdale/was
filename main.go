@@ -24,7 +24,10 @@ func main() {
 	}
 	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()))
 
-	autotls.Run(r, "api.themodak.com")
+	err = autotls.Run(r, "api.themodak.com")
+	if err != nil {
+		panic(err)
+	}
 	// srv := &http.Server{
 	// 	Addr:    config.Service.Address,
 	// 	Handler: r,
