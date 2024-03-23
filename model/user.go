@@ -60,7 +60,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 
 type Ticket struct {
 	Email     string          `gorm:"size:64;not null"`
-	UUID      binaryuuid.UUID `gorm:"uniqueIndex;not null"`
+	UUID      binaryuuid.UUID `gorm:"index:unique;not null"`
 	CreatedAt time.Time       `gorm:"autoCreateTime"`
 }
 
