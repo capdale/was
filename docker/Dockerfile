@@ -12,6 +12,8 @@ WORKDIR /server
 COPY ./was-linux-amd64 ./
 COPY ./config.yaml ./
 
-EXPOSE 8080
+ENV GIN_MODE=release
+
+EXPOSE 443
 
 ENTRYPOINT [ "./was-linux-amd64" ]
