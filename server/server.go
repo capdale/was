@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
+	"github.com/capdale/was/email"
+	"github.com/capdale/was/email/ses"
 	"github.com/capdale/was/logger"
 	"github.com/capdale/was/storage"
 	localstorage "github.com/capdale/was/storage/local"
@@ -89,6 +92,13 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	}
 
 	auth := auth.New(d, store)
+	var emailService email.EmailService
+	if config.Email.Ses != nil {
+		emailService, err = ses.New(config.Email.Ses)
+	}
+	if err != nil {
+		return
+	}
 
 	r.GET("/", func(ctx *gin.Context) {
 		logger.Logger.InfoWithCTX(ctx, "log check")
@@ -108,7 +118,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	}
 
 	authAPI := authapi.New(d, auth)
-	originAPI := originAPI.New(d, auth)
+	createVerifyLink := func(identifier string) string {
+		return fmt.Sprintf("%s/", config.Service.Address)
+	}
+	originAPI := originAPI.New(d, auth, emailService, createVerifyLink)
 	authRouter := r.Group("/auth")
 	{
 		authRouter.GET("/whoami", auth.AuthorizeRequiredMiddleware(), authAPI.WhoAmIHandler)
