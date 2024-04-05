@@ -1,10 +1,10 @@
 package originAPI
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/capdale/was/auth"
+	"github.com/capdale/was/email"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/types/binaryuuid"
 	"github.com/gin-gonic/gin"
@@ -21,14 +21,18 @@ type database interface {
 }
 
 type OriginAPI struct {
-	DB   database
-	Auth *auth.Auth
+	DB               database
+	Auth             *auth.Auth
+	Email            email.EmailService
+	CreateVerifyLink func(identifier string) string
 }
 
-func New(d database, auth *auth.Auth) *OriginAPI {
+func New(d database, auth *auth.Auth, email email.EmailService, createVerifyLink func(string) string) *OriginAPI {
 	return &OriginAPI{
-		DB:   d,
-		Auth: auth,
+		DB:               d,
+		Auth:             auth,
+		Email:            email,
+		CreateVerifyLink: createVerifyLink,
 	}
 }
 
@@ -51,7 +55,13 @@ func (o *OriginAPI) CreateEmailTicketHandler(ctx *gin.Context) {
 		logger.ErrorWithCTX(ctx, "create ticket error", err)
 		return
 	}
-	fmt.Println(ticketUUID)
+
+	verifyLink := o.CreateVerifyLink(ticketUUID.String())
+	if err := o.Email.SendTicketVerifyLink(ctx, form.Email, verifyLink); err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "create email error", err)
+		return
+	}
 	ctx.Status(http.StatusAccepted)
 }
 

@@ -8,6 +8,7 @@ import (
 )
 
 var ErrInvalidConfig = errors.New("invalid config file")
+var ErrInvalidCredForm = errors.New("invalid cred form")
 
 type Config struct {
 	Service Service `yaml:"service"`
@@ -17,6 +18,7 @@ type Config struct {
 	Key     Key     `yaml:"key"`
 	Oauth   Oauth   `yaml:"oauth"`
 	Storage Storage `yaml:"storage"`
+	Email   Email   `yaml:"email"`
 }
 
 type Service struct {
@@ -98,6 +100,17 @@ type S3 struct {
 	Key    *string `yaml:"key,omitempty"`
 }
 
+type Email struct {
+	Ses *Ses `yaml:"ses,omitempty"`
+}
+
+type Ses struct {
+	Region string  `yaml:"region"`
+	Domain string  `yaml:"domain"`
+	Id     *string `yaml:"id,omitempty"`
+	Key    *string `yaml:"key,omitempty"`
+}
+
 func ParseConfig(filepath string) (c *Config, err error) {
 	buf, err := os.ReadFile(filepath)
 	if err != nil {
@@ -106,7 +119,15 @@ func ParseConfig(filepath string) (c *Config, err error) {
 
 	c = &Config{}
 	err = yaml.Unmarshal(buf, c)
+	if err != nil {
+		return
+	}
+
 	if c.Storage.Local == nil && c.Storage.S3 == nil {
+		err = ErrInvalidConfig
+		return
+	}
+	if c.Email.Ses == nil {
 		err = ErrInvalidConfig
 		return
 	}
