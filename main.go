@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("configpath", "./config.yaml", "config path")
+	configPath := flag.String("configpath", "config.yaml", "config path")
 	config, err := config.ParseConfig(*configPath)
 	if err != nil {
 		panic(err)
@@ -24,7 +24,7 @@ func main() {
 	}
 	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()))
 
-	err = autotls.Run(r, "api.themodak.com")
+	err = autotls.Run(r, config.Service.Address)
 	if err != nil {
 		panic(err)
 	}
