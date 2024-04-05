@@ -45,6 +45,13 @@ oauth:
     secret: "client secret"
     redirect: "redirect url"
 
+email:
+  ses:
+    region: "region"
+    domain: "base domain"
+    id: "id" # optional
+    key: "key" # optional
+
 storage:
   local:
     baseDirectory: "base directory path"
