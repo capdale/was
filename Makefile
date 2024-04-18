@@ -3,7 +3,7 @@ BUILD_DIR=./build/
 DOCKER_DIR=./docker/
 
 PATH_RESOLVE=MSYS2_ARG_CONV_EXCL='*'
-DOCKER_RUN=docker run -v .:/src/app -w /src/app
+DOCKER_RUN=docker run --rm -v .:/src/app -w /src/app
 DOCKER_IMAGE=golang:latest
 
 
