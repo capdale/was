@@ -2,6 +2,8 @@
 
 Modoo collection was server
 
+# Setup
+
 ### Config
 
 Ref [example.yaml](./example.yaml), rename to config.yaml
@@ -115,3 +117,8 @@ make docker-image-linux-arm64
 ```console
 docker compose up -d
 ```
+
+#### security
+
+Database access management  
+Do not use root account to access database, make new role with restricted access
