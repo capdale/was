@@ -21,7 +21,7 @@ type User struct {
 	Email           string           `gorm:"size:64;uniqueIndex;not null"`
 	CreatedAt       time.Time        `gorm:"autoCreateTime"`
 	UpdateAt        time.Time        `gorm:"autoUpdateTime"`
-	Collections     []Collection     `gorm:"foreignkey:UserId;references:Id"`
+	Collections     *[]Collection     `gorm:"foreignkey:UserId;references:Id"`
 	OriginUser      OriginUser       `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
 	SocialUser      SocialUser       `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
 	UserDisplayType *UserDisplayType `gorm:"foreignKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
@@ -81,6 +81,7 @@ type UserFollow struct {
 }
 
 type UserFollowRequest struct {
+	Id uint64 `gorm:"primaryKey"`
 	UserId   int64 `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
 	TargetId int64 `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
 }
