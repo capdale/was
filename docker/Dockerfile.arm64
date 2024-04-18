@@ -12,6 +12,6 @@ WORKDIR /server
 COPY ./was-linux-arm64 ./
 COPY ./config.yaml ./
 
-EXPOSE 8080
+EXPOSE 443
 
 ENTRYPOINT [ "./was-linux-arm64" ]
