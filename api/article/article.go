@@ -30,6 +30,7 @@ type database interface {
 	GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
 	HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error
+	DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error
 }
 
 type ArticleAPI struct {
@@ -242,4 +243,27 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.Data(http.StatusOK, "image/jpeg", *imageBytes)
+}
+
+type deleteArticleHandlerUri struct {
+	ArticleLink string `uri:"link" binding:"required,uuid"`
+}
+
+func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
+	uri := &deleteArticleHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	articleLinkId := binaryuuid.MustParse(uri.ArticleLink)
+	if err := a.d.DeleteArticle(&claims.UUID, &articleLinkId); err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "delete article", err)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }
