@@ -72,3 +72,17 @@ func (d *DB) HasAccessPermissionCollection(claimerUUID *binaryuuid.UUID, collect
 	}
 	return nil
 }
+
+func (d *DB) DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryuuid.UUID) error {
+	userId, err := d.GetUserIdByUUID(*userUUID)
+	if err != nil {
+		return err
+	}
+
+	if err := d.DB.
+		Where("user_id = ? AND uuid = ?", userId, collectionUUID).
+		Delete(&model.Collection{}).Error; err != nil {
+			return err
+		}
+	return nil
+}
