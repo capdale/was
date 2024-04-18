@@ -17,9 +17,9 @@ type database interface {
 	GetFollowers(username string, offset int, limit int) (*[]string, error)
 	GetFollowings(username string, offset int, limit int) (*[]string, error)
 	RequestFollow(claimer binaryuuid.UUID, targetname string) error
-	// AcceptFollowRequest(ticket binaryuuid.UUID) error
 	IsFollower(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
 	IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
+	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *binaryuuid.UUID) error
 }
 
 type SocialAPI struct {
@@ -112,10 +112,6 @@ func (a *SocialAPI) RequestFollowHandler(ctx *gin.Context) {
 	ctx.Status(http.StatusAccepted)
 }
 
-func (a *SocialAPI) AcceptFollowRequestHandler(ctx *gin.Context) {
-
-}
-
 type getFollowerRelationHandlerUri struct {
 	TargetName string `uri:"username" binding:"required"`
 }
@@ -143,7 +139,7 @@ type getFollowingRelationHandlerUri = getFollowerRelationHandlerUri
 func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	uri := &getFollowingRelationHandlerUri{}
-	if err := ctx.Bind(uri); err != nil {
+	if err := ctx.BindUri(uri); err != nil {
 		ctx.Status(http.StatusBadRequest)
 		logger.ErrorWithCTX(ctx, "binding uri", err)
 		return
@@ -156,4 +152,28 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, strconv.FormatBool(isFollowing))
+}
+
+type acceptRequestFollowRequestUri struct {
+	RequestUUID string `uri:"request_uuid" binding:"required,uuid"`
+}
+
+func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
+	uri := &acceptRequestFollowRequestUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadGateway)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return 
+	}
+	
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	requestUUID := binaryuuid.MustParse(uri.RequestUUID)
+	
+	if err := a.DB.AcceptRequestFollow(&claims.UUID, &requestUUID); err != nil {
+		ctx.Status(http.StatusBadGateway)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return 
+	}
+	
+	ctx.Status(http.StatusAccepted)
 }
