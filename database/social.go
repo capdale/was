@@ -31,16 +31,20 @@ func (d *DB) RequestFollow(claimer binaryuuid.UUID, target string) error {
 
 	// if target user is public account, then follow is done immediately
 	if isPublic {
-		return d.DB.Create(&model.UserFollow{
-			UserId:   claimerId,
-			TargetId: targetId,
-		}).Error
+		return d.followUser(claimerId, targetId)
 	}
 
 	// if target user is private account, then request follow
 	return d.DB.Create(&model.UserFollowRequest{
 		UserId:   claimerId,
 		TargetId: targetId,
+	}).Error
+}
+
+func (d *DB) followUser(followerId int64, followingId int64) error {
+	return d.DB.Create(&model.UserFollow{
+		UserId: followerId,
+		TargetId: followingId,
 	}).Error
 }
 
@@ -123,6 +127,7 @@ func (d *DB) GetFollowings(username string, offset int, limit int) (*[]string, e
 	if err != nil {
 		return nil, err
 	}
+
 	followingNames := []string{}
 	if err := d.DB.
 		Model(&model.User{}).
@@ -134,4 +139,29 @@ func (d *DB) GetFollowings(username string, offset int, limit int) (*[]string, e
 		return nil, err
 	}
 	return &followingNames, nil
+}
+
+func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *binaryuuid.UUID) error {
+	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
+	if err != nil {
+		return err
+	}
+	requestId, err := d.GetUserIdByUUID(*requestUUID)
+	if err != nil {
+		return err
+	}
+
+	request := &model.UserFollowRequest{}
+	if err := d.DB.
+		Select("id").
+		Where("user_id = ? and target_id = ?", claimerId, requestId).
+		First(request).Error; err != nil {
+			return err
+		}
+	
+	if err := d.DB.Delete(request).Error; err != nil {
+		return err
+	}
+
+	return d.followUser(claimerId, requestId)
 }
