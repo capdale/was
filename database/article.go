@@ -128,8 +128,14 @@ func (d *DB) DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuu
 		return err
 	}
 
-	if err := d.DB.Where("user_id = ? AND link_id = ?", userId, articleLinkId).Delete(&model.Article{}).Error; err != nil {
-		return err
+	result := d.DB.Where("user_id = ? AND link_id = ?", userId, articleLinkId).Delete(&model.Article{})
+	if result.Error != nil {
+		return result.Error
 	}
+
+	if result.RowsAffected < 1 {
+		return ErrNoAffectedRow
+	}
+
 	return nil
 }
