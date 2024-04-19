@@ -79,10 +79,15 @@ func (d *DB) DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryu
 		return err
 	}
 
-	if err := d.DB.
+	result := d.DB.
 		Where("user_id = ? AND uuid = ?", userId, collectionUUID).
-		Delete(&model.Collection{}).Error; err != nil {
-			return err
-		}
+		Delete(&model.Collection{})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected < 1 {
+		return ErrNoAffectedRow
+	}
 	return nil
 }
