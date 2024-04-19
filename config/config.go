@@ -101,7 +101,11 @@ type S3 struct {
 }
 
 type Email struct {
-	Ses *Ses `yaml:"ses,omitempty"`
+	Mock *Mock `yaml:"mock,omitempty"`
+	Ses  *Ses  `yaml:"ses,omitempty"`
+}
+
+type Mock struct {
 }
 
 type Ses struct {
@@ -127,7 +131,8 @@ func ParseConfig(filepath string) (c *Config, err error) {
 		err = ErrInvalidConfig
 		return
 	}
-	if c.Email.Ses == nil {
+
+	if c.Email.Mock == nil && c.Email.Ses == nil {
 		err = ErrInvalidConfig
 		return
 	}
