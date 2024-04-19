@@ -118,7 +118,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
 		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
-		collectRouter.DELETE("/:uuid", collectAPI.DeleteCollectionHandler)
+		collectRouter.DELETE("/:uuid", auth.AuthorizeRequiredMiddleware(), collectAPI.DeleteCollectionHandler)
 		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
 
@@ -165,7 +165,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
 		articleRouter.GET("/get-links/:username", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
-		articleRouter.DELETE(":link", articleAPI.DeleteArticleHandler)
+		articleRouter.DELETE("/:link", auth.AuthorizeRequiredMiddleware(), articleAPI.DeleteArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
 	}
 
