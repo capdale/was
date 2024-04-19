@@ -92,10 +92,14 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	}
 
 	auth := auth.New(d, store)
+
 	var emailService email.EmailService
-	if config.Email.Ses != nil {
+	if config.Email.Mock != nil {
+		emailService = email.NewEmailMock()
+	} else if config.Email.Ses != nil {
 		emailService, err = ses.New(config.Email.Ses)
 	}
+
 	if err != nil {
 		return
 	}
