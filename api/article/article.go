@@ -177,27 +177,14 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 
 func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 	link := ctx.Param("link")
-	linkBytes, err := base64.URLEncoding.DecodeString(link)
-	if err != nil {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "decode link", nil)
-		return
-	}
-
-	if len(linkBytes) != 16 {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "link bytes error", nil)
-		return
-	}
-
-	linkId, err := binaryuuid.FromBytes(linkBytes)
+	linkId, err := decodeLink(link)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "parse link id", err)
 		return
 	}
 
-	article, err := a.d.GetArticle(linkId)
+	article, err := a.d.GetArticle(*linkId)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get article", err)
@@ -246,7 +233,7 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 }
 
 type deleteArticleHandlerUri struct {
-	ArticleLink string `uri:"link" binding:"required,uuid"`
+	ArticleLink string `uri:"link" binding:"required"`
 }
 
 func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
@@ -257,9 +244,15 @@ func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
 		return
 	}
 
+	articleId, err := decodeLink(uri.ArticleLink)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "link invalid", err)
+		return
+	}
+
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	articleLinkId := binaryuuid.MustParse(uri.ArticleLink)
-	if err := a.d.DeleteArticle(&claims.UUID, &articleLinkId); err != nil {
+	if err := a.d.DeleteArticle(&claims.UUID, articleId); err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "delete article", err)
 		return
