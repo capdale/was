@@ -46,6 +46,7 @@ oauth:
     redirect: "redirect url"
 
 email:
+  mock: # mock option is priority
   ses:
     region: "region"
     domain: "base domain"
