@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -101,7 +102,12 @@ type S3 struct {
 }
 
 type Email struct {
-	Ses *Ses `yaml:"ses,omitempty"`
+	Mock *Mock `yaml:"mock,omitempty"`
+	Ses  *Ses  `yaml:"ses,omitempty"`
+}
+
+type Mock struct {
+	Type string `yaml:"type"`
 }
 
 type Ses struct {
@@ -124,11 +130,12 @@ func ParseConfig(filepath string) (c *Config, err error) {
 	}
 
 	if c.Storage.Local == nil && c.Storage.S3 == nil {
-		err = ErrInvalidConfig
+		err = fmt.Errorf("%v: invalid storage", ErrInvalidConfig)
 		return
 	}
-	if c.Email.Ses == nil {
-		err = ErrInvalidConfig
+
+	if c.Email.Mock == nil && c.Email.Ses == nil {
+		err = fmt.Errorf("%v: invalid email", ErrInvalidConfig)
 		return
 	}
 	return

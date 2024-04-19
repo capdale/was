@@ -121,3 +121,21 @@ func (d *DB) HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, artic
 	}
 	return nil
 }
+
+func (d *DB) DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error {
+	userId, err := d.GetUserIdByUUID(*claimerUUID)
+	if err != nil {
+		return err
+	}
+
+	result := d.DB.Where("user_id = ? AND link_id = ?", userId, articleLinkId).Delete(&model.Article{})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected < 1 {
+		return ErrNoAffectedRow
+	}
+
+	return nil
+}

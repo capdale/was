@@ -46,6 +46,7 @@ oauth:
     redirect: "redirect url"
 
 email:
+  mock: # mock option is priority
   ses:
     region: "region"
     domain: "base domain"
@@ -59,5 +60,5 @@ storage:
   s3:
     region: "region"
     bucketName: "name"
-    id: "id"
-    key: "key"
+    id: "id" # optional
+    key: "key" # optional

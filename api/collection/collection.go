@@ -26,8 +26,9 @@ type database interface {
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (*Collection, error)
-	CreateCollection(useId int64, collection *Collection, collectionUUID binaryuuid.UUID) error
+	CreateCollection(userId int64, collection *Collection, collectionUUID binaryuuid.UUID) error
 	HasAccessPermissionCollection(userUUID *binaryuuid.UUID, collectionUUID binaryuuid.UUID) error
+	DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryuuid.UUID) error
 }
 
 type CollectAPI struct {
@@ -206,4 +207,29 @@ func (a *CollectAPI) GetCollectionImageHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.Data(http.StatusOK, "image/jpeg", *imageBytes)
+}
+
+type deleteCollectionUri struct {
+	CollectionUUID string `uri:"uuid" binding:"required,uuid"`
+}
+
+func (a *CollectAPI) DeleteCollectionHandler(ctx *gin.Context) {
+	uri := &deleteCollectionUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	collectionUUID := binaryuuid.MustParse(uri.CollectionUUID)
+
+	if err := a.DB.DeleteCollection(&claims.UUID, &collectionUUID); err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "delete collection", err)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
+	return 
 }

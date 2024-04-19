@@ -92,10 +92,14 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	}
 
 	auth := auth.New(d, store)
+
 	var emailService email.EmailService
-	if config.Email.Ses != nil {
+	if config.Email.Mock != nil {
+		emailService = email.NewEmailMock()
+	} else if config.Email.Ses != nil {
 		emailService, err = ses.New(config.Email.Ses)
 	}
+
 	if err != nil {
 		return
 	}
@@ -114,6 +118,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
 		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
+		collectRouter.DELETE("/:uuid", auth.AuthorizeRequiredMiddleware(), collectAPI.DeleteCollectionHandler)
 		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
 
@@ -160,6 +165,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
 		articleRouter.GET("/get-links/:username", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
+		articleRouter.DELETE("/:link", auth.AuthorizeRequiredMiddleware(), articleAPI.DeleteArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
 	}
 

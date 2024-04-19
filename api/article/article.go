@@ -30,6 +30,7 @@ type database interface {
 	GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
 	HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error
+	DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error
 }
 
 type ArticleAPI struct {
@@ -176,27 +177,14 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 
 func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 	link := ctx.Param("link")
-	linkBytes, err := base64.URLEncoding.DecodeString(link)
-	if err != nil {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "decode link", nil)
-		return
-	}
-
-	if len(linkBytes) != 16 {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "link bytes error", nil)
-		return
-	}
-
-	linkId, err := binaryuuid.FromBytes(linkBytes)
+	linkId, err := decodeLink(link)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "parse link id", err)
 		return
 	}
 
-	article, err := a.d.GetArticle(linkId)
+	article, err := a.d.GetArticle(*linkId)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get article", err)
@@ -242,4 +230,33 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.Data(http.StatusOK, "image/jpeg", *imageBytes)
+}
+
+type deleteArticleHandlerUri struct {
+	ArticleLink string `uri:"link" binding:"required"`
+}
+
+func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
+	uri := &deleteArticleHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	articleId, err := decodeLink(uri.ArticleLink)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "link invalid", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	if err := a.d.DeleteArticle(&claims.UUID, articleId); err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "delete article", err)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }
