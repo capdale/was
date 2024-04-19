@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/capdale/was/config"
@@ -24,10 +27,22 @@ func main() {
 	}
 	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()))
 
-	err = autotls.Run(r, config.Service.Address)
-	if err != nil {
-		panic(err)
+	if strings.HasPrefix(config.Service.Address, "localhost") {
+		svr := http.Server{
+			Addr:    config.Service.Address,
+			Handler: r,
+		}
+		if err := svr.ListenAndServe(); err != nil {
+			log.Fatalf("listen: %s\n", err)
+			return
+		}
+	} else {
+		if err := autotls.Run(r, config.Service.Address); err != nil {
+			log.Fatalf("tls listen %s\n", err)
+			return
+		}
 	}
+
 	// srv := &http.Server{
 	// 	Addr:    config.Service.Address,
 	// 	Handler: r,
