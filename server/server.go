@@ -11,6 +11,7 @@ import (
 	originAPI "github.com/capdale/was/api/auth/origin"
 	collect "github.com/capdale/was/api/collection"
 	reportAPI "github.com/capdale/was/api/report"
+	userAPI "github.com/capdale/was/api/user"
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
@@ -147,6 +148,12 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
 		}
+	}
+
+	userAPI := userAPI.New(d)
+	userRouter := r.Group("/user")
+	{
+		userRouter.POST("/visibility/:type", auth.AuthorizeRequiredMiddleware(), userAPI.ChangeVisibilityHandler)
 	}
 
 	reportAPI := reportAPI.New(d)
