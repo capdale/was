@@ -9,6 +9,10 @@ import (
 )
 
 func (d *DB) HasQueryPermission(claimerId int64, targetId int64) (bool, error) {
+	if claimerId == targetId {
+		return true, nil
+	}
+
 	userDisplayType := &model.UserDisplayType{}
 	if err := d.DB.
 		Select("is_private").
@@ -20,24 +24,22 @@ func (d *DB) HasQueryPermission(claimerId int64, targetId int64) (bool, error) {
 		return true, nil
 	}
 
-	result := d.DB.
-		Select("").
-		Where("user_id = ? AND target_id =?", claimerId, targetId).
-		First(nil)
-
-	err := result.Error
-	if err != nil {
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil
-		}
-		return false, err
-	}
-	// double check
-	if result.RowsAffected < 1 {
+	if claimerId == -1 {
 		return false, nil
 	}
-	return true, nil
+
+	var exist bool
+
+	err := d.DB.
+		Model(&model.UserFollow{}).
+		Select("count(*) > 0").
+		Where("user_id = ? AND target_id = ?", claimerId, targetId).
+		Find(&exist).Error
+
+	if err != nil {
+		return false, err
+	}
+	return exist, nil
 }
 
 func (d *DB) RequestFollow(claimer binaryuuid.UUID, target string) error {
