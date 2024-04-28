@@ -27,9 +27,10 @@ type database interface {
 	GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetUserIdByName(username string) (int64, error)
-	GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error)
+	GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
-	HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error
+	HasQueryPermission(claimerId int64, targetId int64) (bool, error)
+	HasAccessPermissionArticleImage(claimerId int64, articleImageUUID *binaryuuid.UUID) (bool, error)
 	DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error
 }
 
@@ -184,7 +185,25 @@ func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	article, err := a.d.GetArticle(*linkId)
+	claimsPtr, isExist := ctx.Get("claims")
+	var claimerUUID *binaryuuid.UUID
+	if isExist {
+		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
+	}
+
+	var claimerId int64 = -1
+
+	if isExist {
+		var err error
+		claimerId, err = a.d.GetUserIdByUUID(*claimerUUID)
+		if err != nil {
+			ctx.Status(http.StatusNotFound)
+			logger.ErrorWithCTX(ctx, "id by uuid", err)
+			return
+		}
+	}
+
+	article, err := a.d.GetArticle(claimerId, *linkId)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get article", err)
@@ -211,18 +230,27 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
 	}
 
-	// In beta version, only support authorized
-	if !isExist {
-		ctx.Status(http.StatusUnauthorized)
-		return
+	var claimerId int64 = -1
+
+	if isExist {
+		var err error
+		claimerId, err = a.d.GetUserIdByUUID(*claimerUUID)
+		if err != nil {
+			ctx.Status(http.StatusNotFound)
+			logger.ErrorWithCTX(ctx, "id by uuid", err)
+			return
+		}
 	}
 
 	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
-	if err := a.d.HasAccessPermissionArticleImage(claimerUUID, imageUUID); err != nil {
+
+	hasPermission, err := a.d.HasAccessPermissionArticleImage(claimerId, &imageUUID)
+	if err != nil || !hasPermission {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "check permission", err)
 		return
 	}
+
 	imageBytes, err := a.Storage.GetArticleJPG(ctx, imageUUID)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
