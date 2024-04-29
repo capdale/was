@@ -178,7 +178,7 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 
 func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 	link := ctx.Param("link")
-	linkId, err := decodeLink(link)
+	linkId, err := DecodeLink(link)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "parse link id", err)
@@ -272,7 +272,7 @@ func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	articleId, err := decodeLink(uri.ArticleLink)
+	articleId, err := DecodeLink(uri.ArticleLink)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "link invalid", err)

@@ -9,7 +9,7 @@ import (
 
 var ErrInvalidLink = errors.New("invalid link form")
 
-func decodeLink(link string) (*binaryuuid.UUID, error) {
+func DecodeLink(link string) (*binaryuuid.UUID, error) {
 	linkBytes, err := base64.URLEncoding.DecodeString(link)
 	if err != nil {
 		return nil, err
