@@ -25,9 +25,9 @@ type storage interface {
 type database interface {
 	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
 	GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
-	GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (*Collection, error)
+	GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUID) (*Collection, error)
 	CreateCollection(userId int64, collection *Collection, collectionUUID binaryuuid.UUID) error
-	HasAccessPermissionCollection(userUUID *binaryuuid.UUID, collectionUUID binaryuuid.UUID) error
+	HasAccessPermissionCollection(claimerId int64, collectionUUID binaryuuid.UUID) error
 	DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryuuid.UUID) error
 }
 
@@ -150,18 +150,36 @@ func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 	})
 }
 
+type getCollectionForm struct {
+	CollectionUUID string `uri:"uuid" binding:"required,uuid"`
+}
+
 func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
-	uuidParam := ctx.Param("uuid")
-	collectionUUID, err := binaryuuid.Parse(uuidParam)
-	if err != nil {
+	uri := &getCollectionForm{}
+	if err := ctx.BindUri(uri); err != nil {
 		api.BasicBadRequestError(ctx)
-		logger.ErrorWithCTX(ctx, "binding form", err)
+		logger.ErrorWithCTX(ctx, "binding", err)
 		return
 	}
 
-	collection, err := a.DB.GetCollectionByUUID(&collectionUUID)
+	collectionUUID := binaryuuid.MustParse(uri.CollectionUUID)
+
+	claimePtr, exist := ctx.Get("claims")
+	var claimerId int64 = -1
+	if exist {
+		var err error
+		claim := claimePtr.(*auth.AuthClaims)
+		claimerId, err = a.DB.GetUserIdByUUID(claim.UUID)
+		if err != nil {
+			ctx.Status(http.StatusNotFound)
+			logger.ErrorWithCTX(ctx, "id by uuid", err)
+			return
+		}
+	}
+
+	collection, err := a.DB.GetCollectionByUUID(claimerId, &collectionUUID)
 	if err != nil {
-		api.BasicInternalServerError(ctx)
+		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get collection by uuid", err)
 		return
 	}
@@ -181,25 +199,27 @@ func (a *CollectAPI) GetCollectionImageHandler(ctx *gin.Context) {
 		return
 	}
 
-	claimsPtr, isExists := ctx.Get("claims")
-	var claimerUUID *binaryuuid.UUID
-	if isExists {
-		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
-	}
+	var claimerId int64 = -1
 
-	// In beta version, only support authorized collection
-	if !isExists {
-		ctx.Status(http.StatusUnauthorized)
-		return
+	claimsPtr, isExists := ctx.Get("claims")
+	if isExists {
+		var err error
+		claims := claimsPtr.(*auth.AuthClaims)
+		claimerId, err = a.DB.GetUserIdByUUID(claims.UUID)
+		if err != nil {
+			ctx.Status(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
-	err := a.DB.HasAccessPermissionCollection(claimerUUID, imageUUID)
+	err := a.DB.HasAccessPermissionCollection(claimerId, imageUUID)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "check permission", err)
 		return
 	}
+
 	imageBytes, err := a.Storage.GetCollectionJPG(ctx, imageUUID)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
@@ -231,5 +251,5 @@ func (a *CollectAPI) DeleteCollectionHandler(ctx *gin.Context) {
 	}
 
 	ctx.Status(http.StatusNoContent)
-	return 
+	return
 }

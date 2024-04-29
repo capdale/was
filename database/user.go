@@ -197,3 +197,35 @@ func (d *DB) GetOriginUserUUID(username string, password string) (*binaryuuid.UU
 	}
 	return &user.UUID, nil
 }
+
+const (
+	userVisibilityPublic  = 0
+	userVisibilityPrivate = 1
+)
+
+func (d *DB) UserVisibilityPublic() int {
+	return userVisibilityPublic
+}
+
+func (d *DB) UserVisibilityPrivate() int {
+	return userVisibilityPrivate
+}
+
+func (d *DB) ChangeVisibility(claimerUUID *binaryuuid.UUID, visibilityType int) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		var userId int64
+		if err := tx.
+			Model(&model.User{}).
+			Select("id").Where("uuid = ?", claimerUUID).
+			First(&userId).Error; err != nil {
+			return err
+		}
+		if err := tx.
+			Model(&model.UserDisplayType{}).
+			Where("user_id = ?", userId).
+			Update("is_private", visibilityType == userVisibilityPrivate).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}

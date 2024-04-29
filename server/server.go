@@ -11,6 +11,8 @@ import (
 	originAPI "github.com/capdale/was/api/auth/origin"
 	collect "github.com/capdale/was/api/collection"
 	reportAPI "github.com/capdale/was/api/report"
+	socialAPI "github.com/capdale/was/api/social"
+	userAPI "github.com/capdale/was/api/user"
 	"github.com/capdale/was/auth"
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/database"
@@ -113,11 +115,11 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	collectAPI := collect.New(d, storage)
 
-	collectRouter := r.Group("/collection").Use(auth.AuthorizeRequiredMiddleware())
+	collectRouter := r.Group("/collection")
 	{
-		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
+		collectRouter.GET("/", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
-		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
+		collectRouter.GET("/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionByUUID)
 		collectRouter.DELETE("/:uuid", auth.AuthorizeRequiredMiddleware(), collectAPI.DeleteCollectionHandler)
 		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
@@ -149,6 +151,12 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		}
 	}
 
+	userAPI := userAPI.New(d)
+	userRouter := r.Group("/user")
+	{
+		userRouter.POST("/visibility/:type", auth.AuthorizeRequiredMiddleware(), userAPI.ChangeVisibilityHandler)
+	}
+
 	reportAPI := reportAPI.New(d)
 	reportRouter := r.Group("/report", auth.AuthorizeOptionalMiddleware()) // anonymous can report too
 	{
@@ -164,20 +172,21 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
 		articleRouter.GET("/get-links/:username", articleAPI.GetUserArticleLinksHandler)
-		articleRouter.GET("/:link", articleAPI.GetArticleHandler)
+		articleRouter.GET("/:link", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleHandler)
 		articleRouter.DELETE("/:link", auth.AuthorizeRequiredMiddleware(), articleAPI.DeleteArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
 	}
 
-	// socialAPI := socialAPI.New(d)
-	// socialRouter := r.Group("/social")
-	// {
-	// 	// TODO: auth for secret account
-	// 	socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
-	// 	socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
-	// 	// request follow
-	// 	socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
-	// }
+	socialAPI := socialAPI.New(d)
+	socialRouter := r.Group("/social")
+	{
+		// TODO: auth for secret account
+		socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+		socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		// request follow
+		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
+		socialRouter.POST("/follow/accept/:request_uuid", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
+	}
 
 	return r, nil
 }

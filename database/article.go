@@ -55,18 +55,37 @@ func (d *DB) CreateNewArticle(userId int64, title string, content string, collec
 	}).Error
 }
 
-func (d *DB) GetArticle(linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
-	article := &model.ArticleAPI{}
-	err := d.DB.
-		Model(&model.Article{}).
-		Preload("ArticleCollections").
-		Preload("ArticleImages").
-		Where("link_id = ?", linkId).
-		First(article).Error
+func (d *DB) GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
+	hasPermission, err := d.hasPermissionArticle(claimerId, &linkId)
 	if err != nil {
 		return nil, err
 	}
+	if !hasPermission {
+		return nil, ErrInvalidPermission
+	}
+
+	article := &model.ArticleAPI{}
+	if err = d.DB.
+		Model(&model.Article{}).
+		Preload("ArticleCollections").
+		Preload("ArticleImages").
+		Where("link_uuid = ?", linkId).
+		First(article).Error; err != nil {
+		return nil, err
+	}
 	return article, err
+}
+
+func (d *DB) hasPermissionArticle(claimerId int64, linkId *binaryuuid.UUID) (bool, error) {
+	var ownerId int64
+	if err := d.DB.
+		Model(&model.Article{}).
+		Select("user_id").
+		Where("link_uuid = ?", linkId).
+		First(&ownerId).Error; err != nil {
+		return false, err
+	}
+	return d.HasQueryPermission(claimerId, ownerId)
 }
 
 func (d *DB) GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error) {
@@ -76,13 +95,13 @@ func (d *DB) GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]
 	articles := make([]model.Article, limit)
 	if err := d.DB.
 		Select("LinkID").
-		Where("user_id = ?", userId).
+		Where("user_uuid = ?", userId).
 		Find(&articles).Error; err != nil {
 		return nil, err
 	}
 	links := make([]binaryuuid.UUID, len(articles))
 	for i, article := range articles {
-		links[i] = article.LinkID
+		links[i] = article.LinkUUID
 	}
 	return &links, nil
 }
@@ -104,22 +123,25 @@ func (d *DB) GetArticlesByUserUUID(userUUID binaryuuid.UUID, offset int, limit i
 	return &articles, nil
 }
 
-func (d *DB) HasAccessPermissionArticleImage(claimerUUID *binaryuuid.UUID, articleImageUUID binaryuuid.UUID) error {
-	if claimerUUID == nil {
-		return ErrInvalidPermission
-	}
-	userId, err := d.GetUserIdByUUID(*claimerUUID)
+func (d *DB) HasAccessPermissionArticleImage(claimerId int64, articleImageUUID *binaryuuid.UUID) (bool, error) {
+	imageOwner, err := d.getArticleOwnerIdByArticleImage(articleImageUUID)
 	if err != nil {
-		return err
+		return false, err
 	}
+	return d.HasQueryPermission(claimerId, imageOwner)
+}
+
+func (d *DB) getArticleOwnerIdByArticleImage(articleImageUUID *binaryuuid.UUID) (int64, error) {
+	var userId int64
 	if err := d.DB.
-		Model(&model.ArticleImage{}).
-		Select("").
-		Joins("JOIN articles ON articles.id = article_images.id").
-		Where("article_images.image_uuid = ? AND articles.user_id = ?", articleImageUUID, userId).Error; err != nil {
-		return err
+		Model(&model.Article{}).
+		Select("article.user_id").
+		Joins("JOIN article_images ON articles.id = article_images.id").
+		Where("article_images.image_uuid = ?", articleImageUUID).
+		First(&userId).Error; err != nil {
+		return -1, err
 	}
-	return nil
+	return userId, nil
 }
 
 func (d *DB) DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error {
@@ -128,7 +150,7 @@ func (d *DB) DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuu
 		return err
 	}
 
-	result := d.DB.Where("user_id = ? AND link_id = ?", userId, articleLinkId).Delete(&model.Article{})
+	result := d.DB.Where("user_id = ? AND link_uuid = ?", userId, articleLinkId).Delete(&model.Article{})
 	if result.Error != nil {
 		return result.Error
 	}

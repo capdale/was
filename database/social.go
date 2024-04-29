@@ -8,6 +8,40 @@ import (
 	"gorm.io/gorm"
 )
 
+func (d *DB) HasQueryPermission(claimerId int64, targetId int64) (bool, error) {
+	if claimerId == targetId {
+		return true, nil
+	}
+
+	userDisplayType := &model.UserDisplayType{}
+	if err := d.DB.
+		Select("is_private").
+		Where("user_id = ?", targetId).
+		First(userDisplayType).Error; err != nil {
+		return false, err
+	}
+	if !userDisplayType.IsPrivate {
+		return true, nil
+	}
+
+	if claimerId == -1 {
+		return false, nil
+	}
+
+	var exist bool
+
+	err := d.DB.
+		Model(&model.UserFollow{}).
+		Select("count(*) > 0").
+		Where("user_id = ? AND target_id = ?", claimerId, targetId).
+		Find(&exist).Error
+
+	if err != nil {
+		return false, err
+	}
+	return exist, nil
+}
+
 func (d *DB) RequestFollow(claimer binaryuuid.UUID, target string) error {
 
 	claimerId, err := d.GetUserIdByUUID(claimer)
@@ -43,7 +77,7 @@ func (d *DB) RequestFollow(claimer binaryuuid.UUID, target string) error {
 
 func (d *DB) followUser(followerId int64, followingId int64) error {
 	return d.DB.Create(&model.UserFollow{
-		UserId: followerId,
+		UserId:   followerId,
 		TargetId: followingId,
 	}).Error
 }
@@ -156,9 +190,9 @@ func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *bina
 		Select("id").
 		Where("user_id = ? and target_id = ?", claimerId, requestId).
 		First(request).Error; err != nil {
-			return err
-		}
-	
+		return err
+	}
+
 	if err := d.DB.Delete(request).Error; err != nil {
 		return err
 	}
