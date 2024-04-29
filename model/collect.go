@@ -30,6 +30,7 @@ type CollectionUID struct {
 }
 
 type CollectionAPI struct {
+	UserId          int64       `json:"-"`
 	CollectionIndex *int64      `json:"index" binding:"required"`
 	Geolocation     Geolocation `json:"geolocation" gorm:"embedded"`
 	OriginAt        *time.Time  `json:"datetime,omitempty"`

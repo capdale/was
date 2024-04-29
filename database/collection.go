@@ -20,12 +20,23 @@ func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryu
 	return &uuids, err
 }
 
-func (d *DB) GetCollectionByUUID(collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
+func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
 	collection = &model.CollectionAPI{}
-	err = d.DB.
-		Model(&model.Collection{}).
+	if err = d.DB.
 		Where("uuid = ?", collectionUUID).
-		Find(collection).Error
+		First(collection).Error; err != nil {
+		return
+	}
+
+	allowed, err := d.HasQueryPermission(claimerId, collection.UserId)
+	if err != nil {
+		return
+	}
+
+	if !allowed {
+		err = ErrInvalidPermission
+		return
+	}
 	return
 }
 
@@ -56,19 +67,21 @@ func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, col
 
 // TODO: if claimerUUID is nil, retrieve as public
 // if collection is user owned return nil
-func (d *DB) HasAccessPermissionCollection(claimerUUID *binaryuuid.UUID, collectionUUID binaryuuid.UUID) error {
-	if claimerUUID == nil {
-		return ErrInvalidPermission
+func (d *DB) HasAccessPermissionCollection(claimerId int64, collectionUUID binaryuuid.UUID) error {
+	var ownerId int64
+	if err := d.DB.
+		Select("user_id").
+		Where("uuid = ?", collectionUUID).
+		First(&ownerId).Error; err != nil {
+		return err
 	}
-	userId, err := d.GetUserIdByUUID(*claimerUUID)
+
+	allowed, err := d.HasQueryPermission(claimerId, ownerId)
 	if err != nil {
 		return err
 	}
-	if err := d.DB.
-		Select("user_id").
-		Where("user_id = ? AND uuid = ?", userId, collectionUUID).
-		First(&model.Collection{}).Error; err != nil {
-		return err
+	if !allowed {
+		return ErrInvalidPermission
 	}
 	return nil
 }
