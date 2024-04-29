@@ -181,8 +181,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	socialRouter := r.Group("/social")
 	{
 		// TODO: auth for secret account
-		socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
-		socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		socialRouter.GET("/follower/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+		socialRouter.GET("/following/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		socialRouter.DELETE("/follower/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowerHandler)
+		socialRouter.DELETE("/following/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowingHandler)
 		// request follow
 		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
 		socialRouter.POST("/follow/accept/:request_uuid", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)

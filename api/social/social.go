@@ -20,6 +20,8 @@ type database interface {
 	IsFollower(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
 	IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
 	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *binaryuuid.UUID) error
+	RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error
+	RemoveFollowing(claimerUUID *binaryuuid.UUID, targetname string) error
 }
 
 type SocialAPI struct {
@@ -163,17 +165,59 @@ func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
 	if err := ctx.BindUri(uri); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "bind uri", err)
-		return 
+		return
 	}
-	
+
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	requestUUID := binaryuuid.MustParse(uri.RequestUUID)
-	
+
 	if err := a.DB.AcceptRequestFollow(&claims.UUID, &requestUUID); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "bind uri", err)
-		return 
+		return
 	}
-	
+
+	ctx.Status(http.StatusAccepted)
+}
+
+type deleteFollowerUri struct {
+	TargetName string `uri:"username" binding:"required"`
+}
+
+func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
+	uri := &deleteFollowerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+
+	if err := a.DB.RemoveFollower(&claims.UUID, uri.TargetName); err != nil {
+		ctx.Status(http.StatusNotAcceptable)
+		logger.ErrorWithCTX(ctx, "remove follower", err)
+		return
+	}
+	ctx.Status(http.StatusAccepted)
+}
+
+type deleteFollowingUri = deleteFollowerUri
+
+func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
+	uri := &deleteFollowingUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+
+	if err := a.DB.RemoveFollowing(&claims.UUID, uri.TargetName); err != nil {
+		ctx.Status(http.StatusNotAcceptable)
+		logger.ErrorWithCTX(ctx, "remove following", err)
+		return
+	}
 	ctx.Status(http.StatusAccepted)
 }
