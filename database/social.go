@@ -199,3 +199,43 @@ func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *bina
 
 	return d.followUser(claimerId, requestId)
 }
+
+func (d *DB) RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error {
+	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
+	if err != nil {
+		return err
+	}
+
+	targetId, err := d.GetUserIdByName(targetname)
+	if err != nil {
+		return err
+	}
+
+	result := d.DB.
+		Where("user_id = ? AND target_id = ?", targetId, claimerId).
+		Delete(&model.UserFollow{})
+	if result.RowsAffected < 1 {
+		return ErrNoAffectedRow
+	}
+	return result.Error
+}
+
+func (d *DB) RemoveFollowing(claimerUUID *binaryuuid.UUID, targetname string) error {
+	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
+	if err != nil {
+		return err
+	}
+
+	targetId, err := d.GetUserIdByName(targetname)
+	if err != nil {
+		return err
+	}
+
+	result := d.DB.
+		Where("user_id = ? AND target_id = ?", claimerId, targetId).
+		Delete(&model.UserFollow{})
+	if result.RowsAffected < 1 {
+		return ErrNoAffectedRow
+	}
+	return result.Error
+}
