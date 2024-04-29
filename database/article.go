@@ -69,7 +69,7 @@ func (d *DB) GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.Article
 		Model(&model.Article{}).
 		Preload("ArticleCollections").
 		Preload("ArticleImages").
-		Where("link_id = ?", linkId).
+		Where("link_uuid = ?", linkId).
 		First(article).Error; err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (d *DB) hasPermissionArticle(claimerId int64, linkId *binaryuuid.UUID) (boo
 	if err := d.DB.
 		Model(&model.Article{}).
 		Select("user_id").
-		Where("link_id = ?", linkId).
+		Where("link_uuid = ?", linkId).
 		First(&ownerId).Error; err != nil {
 		return false, err
 	}
@@ -95,13 +95,13 @@ func (d *DB) GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]
 	articles := make([]model.Article, limit)
 	if err := d.DB.
 		Select("LinkID").
-		Where("user_id = ?", userId).
+		Where("user_uuid = ?", userId).
 		Find(&articles).Error; err != nil {
 		return nil, err
 	}
 	links := make([]binaryuuid.UUID, len(articles))
 	for i, article := range articles {
-		links[i] = article.LinkID
+		links[i] = article.LinkUUID
 	}
 	return &links, nil
 }
@@ -150,7 +150,7 @@ func (d *DB) DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuu
 		return err
 	}
 
-	result := d.DB.Where("user_id = ? AND link_id = ?", userId, articleLinkId).Delete(&model.Article{})
+	result := d.DB.Where("user_id = ? AND link_uuid = ?", userId, articleLinkId).Delete(&model.Article{})
 	if result.Error != nil {
 		return result.Error
 	}

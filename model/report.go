@@ -1,7 +1,6 @@
 package model
 
 import (
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -38,13 +37,13 @@ type ReportModel struct {
 type ReportUser struct {
 	ReportModel
 	ReportDetailType int
-	TargetUserUUID   uuid.UUID
+	TargetUserId     int64
 }
 
 type ReportArticle struct {
 	ReportModel
-	ReportDetailType  int
-	TargetArticleLink string
+	ReportDetailType int
+	TargetArticleId  uint64
 }
 
 type ReportBug struct {

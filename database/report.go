@@ -4,33 +4,45 @@ import (
 	"errors"
 
 	"github.com/capdale/was/model"
-	"github.com/google/uuid"
+	"github.com/capdale/was/types/binaryuuid"
 )
 
 var (
 	ErrInvalidDetailType = errors.New("error invalid detail type")
 )
 
-func (d *DB) CreateReportUser(issuerId int64, targetUserUUID *uuid.UUID, detailType int, description string) error {
+func (d *DB) CreateReportUser(issuerId int64, targetUsername string, detailType int, description string) error {
+	userId, err := d.GetUserIdByName(targetUsername)
+	if err != nil {
+		return err
+	}
+
 	reportUser := &model.ReportUser{
 		ReportModel: model.ReportModel{
 			IssuerId:    issuerId,
 			Description: description,
 		},
-		TargetUserUUID:   *targetUserUUID,
+		TargetUserId:     userId,
 		ReportDetailType: detailType,
 	}
 	return d.DB.Create(reportUser).Error
 }
 
-func (d *DB) CreateReportArticle(issuerId int64, targetArticleLink string, detailType int, description string) error {
+func (d *DB) CreateReportArticle(issuerId int64, linkUUID binaryuuid.UUID, detailType int, description string) error {
+	var articleId uint64
+	if err := d.DB.
+		Select("id").
+		Where("link_uuid = ?", linkUUID).
+		First(&articleId).Error; err != nil {
+		return err
+	}
 	reportArticle := &model.ReportArticle{
 		ReportModel: model.ReportModel{
 			IssuerId:    issuerId,
 			Description: description,
 		},
-		TargetArticleLink: targetArticleLink,
-		ReportDetailType:  detailType,
+		TargetArticleId:  articleId,
+		ReportDetailType: detailType,
 	}
 	return d.DB.Create(reportArticle).Error
 }
