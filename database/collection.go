@@ -23,6 +23,7 @@ func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryu
 func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
 	collection = &model.CollectionAPI{}
 	if err = d.DB.
+		Model(&model.Collection{}).
 		Where("uuid = ?", collectionUUID).
 		First(collection).Error; err != nil {
 		return
@@ -70,6 +71,7 @@ func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, col
 func (d *DB) HasAccessPermissionCollection(claimerId int64, collectionUUID binaryuuid.UUID) error {
 	var ownerId int64
 	if err := d.DB.
+		Model(&model.Collection{}).
 		Select("user_id").
 		Where("uuid = ?", collectionUUID).
 		First(&ownerId).Error; err != nil {
