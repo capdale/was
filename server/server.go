@@ -115,11 +115,11 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	collectAPI := collect.New(d, storage)
 
-	collectRouter := r.Group("/collection").Use(auth.AuthorizeRequiredMiddleware())
+	collectRouter := r.Group("/collection")
 	{
-		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
+		collectRouter.GET("/", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
-		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
+		collectRouter.GET("/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionByUUID)
 		collectRouter.DELETE("/:uuid", auth.AuthorizeRequiredMiddleware(), collectAPI.DeleteCollectionHandler)
 		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
