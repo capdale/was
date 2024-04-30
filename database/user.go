@@ -65,7 +65,7 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 }
 
 func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error) {
-	user := new(model.User)
+	user := &model.User{}
 	if err := d.DB.
 		Select("id").
 		Where("uuid = ?", userUUID).

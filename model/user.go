@@ -81,7 +81,8 @@ type UserFollow struct {
 }
 
 type UserFollowRequest struct {
-	Id       uint64 `gorm:"primaryKey"`
-	UserId   int64  `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
-	TargetId int64  `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
+	Id         uint64 `gorm:"primaryKey"`
+	UniqueCode byte   `gorm:"type:binary(64),index,unique"`
+	UserId     int64  `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
+	TargetId   int64  `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
 }
