@@ -164,17 +164,30 @@ func (d *DB) CreateOriginViaTicket(ticketUUID binaryuuid.UUID, username string, 
 		return err
 	}
 
-	return d.DB.Create(&model.User{
-		Username:    username,
-		Email:       ticket.Email,
-		AccountType: model.AccountTypeOrigin,
-		OriginUser: model.OriginUser{
-			Hashed: hashed,
-		},
-		UserDisplayType: &model.UserDisplayType{
-			IsPrivate: false,
-		},
-	}).Error
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		result := tx.
+			Where("uuid = ?", ticket.UUID).
+			Delete(ticket)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected < 1 {
+			return ErrNoAffectedRow
+		}
+
+		return tx.Create(&model.User{
+			Username:    username,
+			Email:       ticket.Email,
+			AccountType: model.AccountTypeOrigin,
+			OriginUser: model.OriginUser{
+				Hashed: hashed,
+			},
+			UserDisplayType: &model.UserDisplayType{
+				IsPrivate: false,
+			},
+		}).Error
+	})
 }
 
 type useruuidNhashed struct {
