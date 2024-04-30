@@ -19,7 +19,8 @@ type database interface {
 	RequestFollow(claimer binaryuuid.UUID, targetname string) error
 	IsFollower(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
 	IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
-	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *binaryuuid.UUID) error
+	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
+	RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
 }
 
 type SocialAPI struct {
@@ -155,7 +156,7 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 }
 
 type acceptRequestFollowRequestUri struct {
-	RequestUUID string `uri:"request_uuid" binding:"required,uuid"`
+	Code string `uri:"code" binding:"required,uuid"`
 }
 
 func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
@@ -163,17 +164,38 @@ func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
 	if err := ctx.BindUri(uri); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "bind uri", err)
-		return 
+		return
 	}
-	
+
 	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	requestUUID := binaryuuid.MustParse(uri.RequestUUID)
-	
-	if err := a.DB.AcceptRequestFollow(&claims.UUID, &requestUUID); err != nil {
+	codeUUID := binaryuuid.MustParse(uri.Code)
+
+	if err := a.DB.AcceptRequestFollow(&claims.UUID, &codeUUID); err != nil {
 		ctx.Status(http.StatusBadGateway)
-		logger.ErrorWithCTX(ctx, "bind uri", err)
-		return 
+		logger.ErrorWithCTX(ctx, "accept request follow", err)
+		return
 	}
-	
+
 	ctx.Status(http.StatusAccepted)
+}
+
+type rejectRequestFollowRequestUri = acceptRequestFollowRequestUri
+
+func (a *SocialAPI) RejectRequestFollowHandler(ctx *gin.Context) {
+	uri := &rejectRequestFollowRequestUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	codeUUID := binaryuuid.MustParse(uri.Code)
+
+	if err := a.DB.RejectRequestFollow(&claims.UUID, &codeUUID); err != nil {
+		ctx.Status(http.StatusBadGateway)
+		logger.ErrorWithCTX(ctx, "reject request follow", err)
+		return
+	}
+	ctx.Status(http.StatusNoContent)
 }
