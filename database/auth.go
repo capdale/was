@@ -102,3 +102,17 @@ func (d *DB) IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[
 	}
 	return nil
 }
+
+func (d *DB) DeleteUserAccount(claimerUUID *binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		var claimerId int64
+		if err := tx.
+			Select("id").
+			Where("uuid = ?", claimerUUID).
+			First(&claimerId).Error; err != nil {
+			return err
+		}
+
+		return tx.Delete(&model.User{}, claimerId).Error
+	})
+}
