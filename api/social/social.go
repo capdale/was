@@ -21,6 +21,8 @@ type database interface {
 	IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
 	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
 	RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
+	RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error
+	RemoveFollowing(claimerUUID *binaryuuid.UUID, targetname string) error
 }
 
 type SocialAPI struct {
@@ -153,6 +155,48 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, strconv.FormatBool(isFollowing))
+}
+
+type deleteFollowerUri struct {
+	TargetName string `uri:"username" binding:"required"`
+}
+
+func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
+	uri := &deleteFollowerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+
+	if err := a.DB.RemoveFollower(&claims.UUID, uri.TargetName); err != nil {
+		ctx.Status(http.StatusNotAcceptable)
+		logger.ErrorWithCTX(ctx, "remove follower", err)
+		return
+	}
+	ctx.Status(http.StatusAccepted)
+}
+
+type deleteFollowingUri = deleteFollowerUri
+
+func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
+	uri := &deleteFollowingUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+
+	if err := a.DB.RemoveFollowing(&claims.UUID, uri.TargetName); err != nil {
+		ctx.Status(http.StatusNotAcceptable)
+		logger.ErrorWithCTX(ctx, "remove following", err)
+		return
+	}
+	ctx.Status(http.StatusAccepted)
 }
 
 type acceptRequestFollowRequestUri struct {

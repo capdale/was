@@ -115,11 +115,11 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	collectAPI := collect.New(d, storage)
 
-	collectRouter := r.Group("/collection").Use(auth.AuthorizeRequiredMiddleware())
+	collectRouter := r.Group("/collection")
 	{
-		collectRouter.GET("/", auth.AuthorizeRequiredMiddleware(), collectAPI.GetCollectection)
+		collectRouter.GET("/", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectection)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
-		collectRouter.GET("/:uuid", collectAPI.GetCollectionByUUID)
+		collectRouter.GET("/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionByUUID)
 		collectRouter.DELETE("/:uuid", auth.AuthorizeRequiredMiddleware(), collectAPI.DeleteCollectionHandler)
 		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
@@ -181,8 +181,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	socialRouter := r.Group("/social")
 	{
 		// TODO: auth for secret account
-		socialRouter.GET("/followers/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
-		socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		socialRouter.GET("/follower/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+		socialRouter.GET("/following/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		socialRouter.DELETE("/follower/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowerHandler)
+		socialRouter.DELETE("/following/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowingHandler)
 		// request follow
 		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
 		socialRouter.POST("/follow/accept/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
