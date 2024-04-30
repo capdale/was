@@ -19,7 +19,8 @@ type database interface {
 	RequestFollow(claimer binaryuuid.UUID, targetname string) error
 	IsFollower(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
 	IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
-	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *binaryuuid.UUID) error
+	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
+	RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
 	RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error
 	RemoveFollowing(claimerUUID *binaryuuid.UUID, targetname string) error
 }
@@ -156,30 +157,6 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 	ctx.String(http.StatusOK, strconv.FormatBool(isFollowing))
 }
 
-type acceptRequestFollowRequestUri struct {
-	RequestUUID string `uri:"request_uuid" binding:"required,uuid"`
-}
-
-func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
-	uri := &acceptRequestFollowRequestUri{}
-	if err := ctx.BindUri(uri); err != nil {
-		ctx.Status(http.StatusBadGateway)
-		logger.ErrorWithCTX(ctx, "bind uri", err)
-		return
-	}
-
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	requestUUID := binaryuuid.MustParse(uri.RequestUUID)
-
-	if err := a.DB.AcceptRequestFollow(&claims.UUID, &requestUUID); err != nil {
-		ctx.Status(http.StatusBadGateway)
-		logger.ErrorWithCTX(ctx, "bind uri", err)
-		return
-	}
-
-	ctx.Status(http.StatusAccepted)
-}
-
 type deleteFollowerUri struct {
 	TargetName string `uri:"username" binding:"required"`
 }
@@ -220,4 +197,49 @@ func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.Status(http.StatusAccepted)
+}
+
+type acceptRequestFollowRequestUri struct {
+	Code string `uri:"code" binding:"required,uuid"`
+}
+
+func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
+	uri := &acceptRequestFollowRequestUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadGateway)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	codeUUID := binaryuuid.MustParse(uri.Code)
+
+	if err := a.DB.AcceptRequestFollow(&claims.UUID, &codeUUID); err != nil {
+		ctx.Status(http.StatusBadGateway)
+		logger.ErrorWithCTX(ctx, "accept request follow", err)
+		return
+	}
+
+	ctx.Status(http.StatusAccepted)
+}
+
+type rejectRequestFollowRequestUri = acceptRequestFollowRequestUri
+
+func (a *SocialAPI) RejectRequestFollowHandler(ctx *gin.Context) {
+	uri := &rejectRequestFollowRequestUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	codeUUID := binaryuuid.MustParse(uri.Code)
+
+	if err := a.DB.RejectRequestFollow(&claims.UUID, &codeUUID); err != nil {
+		ctx.Status(http.StatusBadGateway)
+		logger.ErrorWithCTX(ctx, "reject request follow", err)
+		return
+	}
+	ctx.Status(http.StatusNoContent)
 }

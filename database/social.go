@@ -175,29 +175,59 @@ func (d *DB) GetFollowings(username string, offset int, limit int) (*[]string, e
 	return &followingNames, nil
 }
 
-func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, requestUUID *binaryuuid.UUID) error {
+func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error {
 	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
 	if err != nil {
 		return err
 	}
-	requestId, err := d.GetUserIdByUUID(*requestUUID)
+
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		followRequest := &model.UserFollowRequest{}
+		if err := d.DB.
+			Select("id", "user_id", "target_id").
+			Where("unique_code = ?", code).
+			First(followRequest).Error; err != nil {
+			return err
+		}
+
+		if claimerId != followRequest.TargetId {
+			return ErrInvalidPermission
+		}
+
+		if err := d.DB.
+			Delete(&model.UserFollowRequest{}, followRequest.Id).Error; err != nil {
+			return err
+		}
+
+		err := d.followUser(followRequest.UserId, followRequest.TargetId)
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil
+		}
+		return err
+	})
+}
+
+func (d *DB) RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error {
+	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
 	if err != nil {
 		return err
 	}
 
-	request := &model.UserFollowRequest{}
-	if err := d.DB.
-		Select("id").
-		Where("user_id = ? and target_id = ?", claimerId, requestId).
-		First(request).Error; err != nil {
-		return err
-	}
+	d.DB.Transaction(func(tx *gorm.DB) error {
+		followRequest := &model.UserFollowRequest{}
+		if err := d.DB.
+			Select("id", "user_id", "target_id").
+			Where("unique_code = ?", code).
+			First(followRequest).Error; err != nil {
+			return err
+		}
 
-	if err := d.DB.Delete(request).Error; err != nil {
-		return err
-	}
-
-	return d.followUser(claimerId, requestId)
+		if claimerId != followRequest.TargetId {
+			return ErrInvalidPermission
+		}
+		return d.DB.Delete(&model.UserFollowRequest{}, followRequest.Id).Error
+	})
+	return nil
 }
 
 func (d *DB) RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error {

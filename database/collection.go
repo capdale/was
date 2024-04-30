@@ -29,7 +29,12 @@ func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUI
 		return
 	}
 
-	allowed, err := d.HasQueryPermission(claimerId, collection.UserId)
+	if collection.UserId == nil {
+		err = ErrNoAffectedRow
+		return
+	}
+
+	allowed, err := d.HasQueryPermission(claimerId, *collection.UserId)
 	if err != nil {
 		return
 	}
@@ -43,7 +48,7 @@ func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUI
 
 func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, collectionUUID binaryuuid.UUID) error {
 	c := &model.Collection{
-		UserId:          userId,
+		UserId:          &userId,
 		UUID:            collectionUUID,
 		CollectionIndex: *collection.CollectionIndex,
 		Geolocation:     collection.Geolocation,

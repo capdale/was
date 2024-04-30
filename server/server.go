@@ -131,7 +131,6 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	originAPI := originAPI.New(d, auth, emailService, createVerifyLink)
 	authRouter := r.Group("/auth")
 	{
-		authRouter.GET("/whoami", auth.AuthorizeRequiredMiddleware(), authAPI.WhoAmIHandler)
 		authRouter.POST("/blacklist", auth.AuthorizeRequiredMiddleware(), authAPI.SetBlacklistHandler)
 		authRouter.POST("/refresh", authAPI.RefreshTokenHandler)
 		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
@@ -149,6 +148,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
 		}
+		authRouter.DELETE("/", auth.AuthorizeRequiredMiddleware(), authAPI.DeleteUserAccountHandler)
 	}
 
 	userAPI := userAPI.New(d)
@@ -187,7 +187,8 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		socialRouter.DELETE("/following/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowingHandler)
 		// request follow
 		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
-		socialRouter.POST("/follow/accept/:request_uuid", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
+		socialRouter.POST("/follow/accept/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
+		socialRouter.POST("/follow/reject/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.RejectRequestFollowHandler)
 	}
 
 	return r, nil
