@@ -185,7 +185,8 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		socialRouter.GET("/followings/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
 		// request follow
 		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
-		socialRouter.POST("/follow/accept/:request_uuid", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
+		socialRouter.POST("/follow/accept/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
+		socialRouter.POST("/follow/reject/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.RejectRequestFollowHandler)
 	}
 
 	return r, nil
