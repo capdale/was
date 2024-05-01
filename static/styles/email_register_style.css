@@ -1,0 +1,105 @@
+@font-face {
+  font-family: "pretendard";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff")
+    format("woff");
+  font-weight: 400;
+  font-style: normal;
+}
+* {
+  box-sizing: content-box;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+  padding: 120px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.register {
+  width: 256px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo-image {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  box-shadow: 0 0 20px -8px;
+  margin: 24px;
+}
+
+.subtitle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "pretendard";
+  color: #651fc1;
+}
+.subtitle h2 {
+  margin: 0;
+  font-weight: 400;
+}
+.subtitle p {
+  margin: 12px 0 20px 0;
+  color: #000000;
+}
+
+#register-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: "pretendard";
+}
+#register-form input {
+  background: none;
+  color: inherit;
+  height: 32px;
+  border-radius: 4px;
+  border: 2px solid #8c8c8c;
+  padding: 0 0 0 8px;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+}
+#register-form button {
+  font-size: 18px;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  height: 32px;
+  background-color: #651fc1;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+#register-form .input-valid {
+  border-color: #3adf79;
+}
+#register-form .input-invalid {
+  border-color: #df3a4d;
+}
+#register-form .regist-enable {
+  background-color: #631fbd;
+}
+#register-form .regist-wait {
+  background-color: #631fbd;
+}
+#register-form .regist-disable {
+  background-color: #631fbd;
+}
+#register-form .regist-error {
+  background-color: #df3a4d;
+}
+
+@media screen and (max-width: 550px) {
+  body {
+    padding-top: 60px;
+  }
+}
