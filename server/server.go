@@ -35,6 +35,8 @@ import (
 
 func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	r = gin.New()
+	r.LoadHTMLGlob("templates/**/*")
+	r.Static("/static", "./static")
 
 	isProduction := gin.Mode() == gin.ReleaseMode
 
@@ -149,6 +151,8 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
 		}
 		authRouter.DELETE("/", auth.AuthorizeRequiredMiddleware(), authAPI.DeleteUserAccountHandler)
+
+		authRouter.GET("/register/:ticket", originAPI.RegisterTicketView)
 	}
 
 	userAPI := userAPI.New(d)

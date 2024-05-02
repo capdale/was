@@ -123,17 +123,12 @@ func (d *DB) RemoveTicket(ticketUUID binaryuuid.UUID) error {
 }
 
 func (d *DB) IsTicketAvailable(ticketUUID binaryuuid.UUID) (bool, error) {
-	ticket, err := d.GetTicket(ticketUUID)
+	_, err := d.GetTicket(ticketUUID)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if err == gorm.ErrRecordNotFound || err == ErrTicketExpired {
 			return false, nil
 		}
 		return false, err
-	}
-
-	if ticket.CreatedAt.Add(time.Minute * 10).Before(time.Now()) {
-		go d.RemoveTicket(ticketUUID)
-		return false, nil
 	}
 	return true, nil
 }
@@ -151,6 +146,14 @@ func (d *DB) GetTicket(ticketUUID binaryuuid.UUID) (*model.Ticket, error) {
 		return nil, ErrTicketExpired
 	}
 	return ticket, nil
+}
+
+func (d *DB) GetEmailByTicket(ticketUUID *binaryuuid.UUID) (string, error) {
+	ticket, err := d.GetTicket(*ticketUUID)
+	if err != nil {
+		return "", err
+	}
+	return ticket.Email, nil
 }
 
 func (d *DB) CreateOriginViaTicket(ticketUUID binaryuuid.UUID, username string, password string) error {

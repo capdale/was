@@ -1,6 +1,10 @@
 # Modoo collection was server
 
+![was_image](./docs/was.png)
+
+<div align="center">
 Modoo collection was server
+</div>
 
 # Setup
 
@@ -55,7 +59,7 @@ If you want to use docker network, [see this](https://docs.docker.com/network/)
 ```console
 make docker-build
 make docker-image
-docker run -d -p 443:$43 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
+docker run -d -p 443:443 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
 ```
 
 ### Build (Native)
@@ -110,7 +114,17 @@ make docker-image-linux-arm64
 # tag arm64/was
 ```
 
-### Background service for development
+#### security
+
+Database access management  
+Do not use root account to access database, make new role with restricted access
+
+# Test and Develop
+
+> [!WARNING]
+> Do not use test setting in production!
+
+#### Background service (mysql and redis)
 
 [./compose.yaml](./compose.yaml)
 
@@ -118,7 +132,4 @@ make docker-image-linux-arm64
 docker compose up -d
 ```
 
-#### security
-
-Database access management  
-Do not use root account to access database, make new role with restricted access
+#### Config

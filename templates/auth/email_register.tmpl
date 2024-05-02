@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modoo's collection</title>
+    <link rel="stylesheet" href="/static/styles/email_register_style.css" />
+  </head>
+  <body>
+    <section class="register">
+      <div class="logo">
+        <img
+          class="logo-image"
+          src="https://raw.githubusercontent.com/capdale/.github/main/profile/imgs/logo.png"
+          alt=""
+        />
+      </div>
+      <div class="subtitle">
+        <h2>Welcome!</h2>
+        <p>Register your account</p>
+      </div>
+      <form id="register-form" action="{{ .endpoint }}">
+        <input
+          id="register-ticket"
+          type="text"
+          name="ticket"
+          value="{{ .ticket }}"
+          style="display: none"
+          disabled
+        />
+        <input
+          id="register-email"
+          type="text"
+          name="email"
+          value="{{ .email }}"
+          disabled
+        />
+        <input
+          id="register-username"
+          type="text"
+          name="username"
+          placeholder="username"
+        />
+        <input
+          id="register-password"
+          type="password"
+          name="password"
+          placeholder="password"
+        />
+        <div id="register-checks"></div>
+        <button id="submit-register">register</button>
+      </form>
+      <div id="submit-success" style="display: none">
+        <div class="success-message">Success</div>
+      </div>
+    </section>
+  </body>
+  <script>
+    const submitBtn = document.getElementById("submit-register");
+
+    class SubmitController {
+      static SUBMIT_STATE_ENABLE = "enable";
+      static SUBMIT_STATE_WAIT = "wait";
+      static SUBMIT_STATE_DISABLE = "disable";
+      static SUBMIT_STATE_ERROR = "error";
+      constructor(element) {
+        this.elem = element;
+        this.state = SubmitController.SUBMIT_STATE_DISABLE;
+        this.setDisable();
+      }
+
+      setEnable() {
+        this.elem.className = "regist-enable";
+        this.elem.innerHTML = "register";
+        this.state = SubmitController.SUBMIT_STATE_ENABLE;
+      }
+
+      setWait() {
+        this.elem.className = "regist-wait";
+        this.elem.innerHTML = "wait";
+        this.state = SubmitController.SUBMIT_STATE_WAIT;
+      }
+
+      setDisable() {
+        this.elem.className = "regist-disable";
+        this.state = SubmitController.SUBMIT_STATE_DISABLE;
+      }
+
+      setError() {
+        this.elem.className = "regist-error";
+        this.elem.innerHTML = "register";
+        this.state = SubmitController.SUBMIT_STATE_ERROR;
+      }
+
+      isEnable() {
+        return this.state === SubmitController.SUBMIT_STATE_ENABLE;
+      }
+
+      isWait() {
+        return this.state === SubmitController.SUBMIT_STATE_WAIT;
+      }
+
+      isDisable() {
+        return this.state === SubmitController.SUBMIT_STATE_DISABLE;
+      }
+
+      isError() {
+        return this.state === SubmitController.SUBMIT_STATE_ERROR;
+      }
+
+      canSubmit() {
+        return !this.isDisable() && !this.isWait();
+      }
+    }
+
+    var submitController = new SubmitController(submitBtn);
+
+    var validUsername = false;
+    var validPassword = false;
+    const validUsernameRegex = /^[a-zA-Z0-9]{6,}$/;
+    const validPasswordRegexBundle = [
+      {
+        regex: /[a-z]+/,
+        message: "at least one lowercase letter",
+      },
+      {
+        regex: /[A-Z]+/,
+        message: "at least one uppercase letter",
+      },
+      {
+        regex: /\d+/,
+        message: "at least one number",
+      },
+      {
+        regex: /[@$!%*?&]+/,
+        message: "at least one special letter",
+      },
+      {
+        regex: /^.{8,}$/,
+        message: "minimum length is 8",
+      },
+      { regex: /^[a-zA-Z\d@$!%*?&]+$/, message: "invalid letter" },
+    ];
+
+    function validateUsername(name) {
+      return validUsernameRegex.test(name);
+    }
+
+    function validatePasword(password) {
+      let checkList = validPasswordRegexBundle.map((elem) => {
+        return {
+          message: elem.message,
+          valid: elem.regex.test(password),
+        };
+      });
+      return checkList;
+    }
+
+    function changeSubmitState() {
+      if (validUsername && validPassword) {
+        if (!submitController.isWait()) {
+          submitController.setEnable();
+        }
+        return;
+      }
+      submitController.setDisable();
+    }
+
+    document
+      .getElementById("register-username")
+      .addEventListener("input", (e) => {
+        validUsername = validateUsername(e.target.value);
+        if (validUsername) {
+          e.target.className = "input-valid";
+        } else {
+          e.target.className = "input-invalid";
+        }
+        changeSubmitState();
+      });
+
+    const passwordWarningElem = document.getElementById("register-checks");
+    document
+      .getElementById("register-password")
+      .addEventListener("input", (e) => {
+        const checkList = validatePasword(e.target.value);
+        const checkMessages = checkList
+          .map((e) => {
+            if (e.valid) return null;
+            return `<div class="invalid-password-check">${e.message}</div>`;
+          })
+          .filter((e) => e !== null);
+        const isValid = checkMessages <= 0;
+        passwordWarningElem.innerHTML = checkMessages.join("");
+        if (isValid) {
+          e.target.className = "input-valid";
+        } else {
+          e.target.className = "input-invalid";
+        }
+        validPassword = isValid;
+        changeSubmitState();
+      });
+
+    function submitSucess() {
+      document.getElementById("register-form").remove();
+      const successElem = document.getElementById("submit-success");
+      successElem.style.display = "block";
+    }
+
+    async function submit() {
+      const form = document.getElementById("register-form");
+      const ticket = form.ticket.value;
+      const username = form.username.value;
+      const password = form.password.value;
+
+      return await fetch(form.action, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },  
+        cache: "no-cache",
+        body: JSON.stringify({
+          ticket: ticket,
+          username: username,
+          password: password,
+        }),
+      })
+        .then((res) => res.status === 202)
+        .catch((e) => false);
+    }
+
+    submitBtn.onclick = async function (e) {
+      e.preventDefault();
+      if (!submitController.canSubmit()) {
+        return;
+      }
+      submitController.setWait();
+      const submitted = await submit();
+      if (!submitted) {
+        submitController.setError();
+        return;
+      }
+
+      // submit true
+      submitSucess();
+    };
+  </script>
+</html>
