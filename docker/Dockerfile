@@ -9,10 +9,10 @@ RUN apt-get update && \
 
 WORKDIR /server
 
-COPY ./docker/was-linux-amd64 ./
-COPY ./templates/ ./templates/
-COPY ./static/ ./static/
-COPY ./config.yaml ./
+COPY docker/was-linux-amd64 ./
+COPY config.yaml ./
+COPY templates/ ./templates/
+COPY static/ ./static/
 
 ENV GIN_MODE=release
 
