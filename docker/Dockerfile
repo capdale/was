@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 WORKDIR /server
 
-COPY docker/was-linux-amd64 .
+COPY build/was-linux-amd64 .
 COPY config.yaml .
 COPY /templates ./templates
 COPY /static ./static 
