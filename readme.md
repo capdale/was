@@ -114,7 +114,17 @@ make docker-image-linux-arm64
 # tag arm64/was
 ```
 
-### Background service for development
+#### security
+
+Database access management  
+Do not use root account to access database, make new role with restricted access
+
+# Test and Develop
+
+> [!WARNING]
+> Do not use test setting in production!
+
+#### Background service (mysql and redis)
 
 [./compose.yaml](./compose.yaml)
 
@@ -122,7 +132,4 @@ make docker-image-linux-arm64
 docker compose up -d
 ```
 
-#### security
-
-Database access management  
-Do not use root account to access database, make new role with restricted access
+#### Config
