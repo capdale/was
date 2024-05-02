@@ -58,7 +58,7 @@ docker-build: docker-build-linux-amd64
 # build docker image
 docker-image-linux-amd64:
 	cp ${BUILD_DIR}${APP_NAME}-linux-amd64 ${DOCKER_DIR}
-	docker build --tag ${APP_NAME} ${DOCKER_DIR}.
+	docker build --tag ${APP_NAME} -f ${DOCKER_DIR}Dockerfile .
 
 docker-image-linux-arm64:
 	cp ${BUILD_DIR}${APP_NAME}-linux-arm64 ${DOCKER_DIR}
