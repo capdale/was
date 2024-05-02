@@ -1,7 +1,6 @@
 @font-face {
   font-family: "pretendard";
-  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff")
-    format("woff");
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff") format("woff");
   font-weight: 400;
   font-style: normal;
 }
@@ -96,6 +95,19 @@ body {
 }
 #register-form .regist-error {
   background-color: #df3a4d;
+}
+
+#submit-success {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: "pretendard";
+  color: #1daf5c;
+}
+
+.success-message {
+  font-size: 24px;
 }
 
 @media screen and (max-width: 550px) {

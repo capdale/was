@@ -51,7 +51,7 @@
         <button id="submit-register">register</button>
       </form>
       <div id="submit-success" style="display: none">
-        <div></div>
+        <div class="success-message">Success</div>
       </div>
     </section>
   </body>
@@ -200,14 +200,23 @@
         changeSubmitState();
       });
 
+    function submitSucess() {
+      document.getElementById("register-form").remove();
+      const successElem = document.getElementById("submit-success");
+      successElem.style.display = "block";
+    }
+
     async function submit() {
       const form = document.getElementById("register-form");
-      const ticket = form.ticket;
-      const username = form.username;
-      const password = form.password;
+      const ticket = form.ticket.value;
+      const username = form.username.value;
+      const password = form.password.value;
 
       return await fetch(form.action, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },  
         cache: "no-cache",
         body: JSON.stringify({
           ticket: ticket,
@@ -232,6 +241,7 @@
       }
 
       // submit true
+      submitSucess();
     };
   </script>
 </html>
