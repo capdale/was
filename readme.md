@@ -1,6 +1,10 @@
 # Modoo collection was server
 
+![was_image](./docs/was.png)
+
+<div align="center">
 Modoo collection was server
+</div>
 
 # Setup
 
@@ -55,7 +59,7 @@ If you want to use docker network, [see this](https://docs.docker.com/network/)
 ```console
 make docker-build
 make docker-image
-docker run -d -p 443:$43 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
+docker run -d -p 443:443 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
 ```
 
 ### Build (Native)
