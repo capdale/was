@@ -128,7 +128,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	authAPI := authapi.New(d, auth)
 	createVerifyLink := func(identifier string) string {
-		return fmt.Sprintf("https://%s/register/%s", config.Service.Address, identifier)
+		return fmt.Sprintf("https://%s/auth/register/%s", config.Service.Address, identifier)
 	}
 	originAPI := originAPI.New(d, auth, emailService, createVerifyLink)
 	authRouter := r.Group("/auth")
