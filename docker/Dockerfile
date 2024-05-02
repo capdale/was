@@ -12,7 +12,7 @@ WORKDIR /server
 COPY ./docker/was-linux-amd64 ./
 COPY ./templates/ ./templates/
 COPY ./static/ ./static/
-COPY ./docker/config.yaml ./
+COPY ./config.yaml ./
 
 ENV GIN_MODE=release
 

@@ -25,8 +25,8 @@ jobs:
 
       - name: Create config file
         run: |
-          touch ./docker/config.yaml
-          echo '${{ secrets.CONFIG_YAML }}' >> ./docker/config.yaml
+          touch ./config.yaml
+          echo '${{ secrets.CONFIG_YAML }}' >> ./config.yaml
         shell: bash
 
       - name: Build
