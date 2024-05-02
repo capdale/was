@@ -36,6 +36,7 @@ import (
 func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	r = gin.New()
 	r.LoadHTMLGlob("templates/**/*")
+	r.Static("/static", "./static")
 
 	isProduction := gin.Mode() == gin.ReleaseMode
 
