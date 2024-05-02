@@ -1,6 +1,7 @@
 package originAPI
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/capdale/was/auth"
@@ -16,6 +17,7 @@ type database interface {
 	IsEmailUsed(email string) (bool, error)
 	IsTicketAvailable(ticketUUID binaryuuid.UUID) (bool, error)
 	CreateTicketByEmail(email string) (*binaryuuid.UUID, error)
+	GetEmailByTicket(ticketUUID *binaryuuid.UUID) (string, error)
 	CreateOriginViaTicket(ticket binaryuuid.UUID, username string, password string) error
 	GetOriginUserUUID(username string, password string) (*binaryuuid.UUID, error)
 }
@@ -67,8 +69,8 @@ func (o *OriginAPI) CreateEmailTicketHandler(ctx *gin.Context) {
 
 type registerTicketForm struct {
 	Ticket   string `form:"ticket" binding:"required,uuid"`
-	Username string `form:"username" json:"username" binding:"required,min=6,max=12"`
-	Password string `form:"password" json:"password" binding:"required,min=8,max=22"`
+	Username string `form:"username" json:"username" binding:"required,min=6,max=20"`
+	Password string `form:"password" json:"password" binding:"required,min=8,max=32"`
 }
 
 func (o *OriginAPI) RegisterTicketHandler(ctx *gin.Context) {
@@ -89,6 +91,38 @@ func (o *OriginAPI) RegisterTicketHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.Status(http.StatusAccepted)
+}
+
+type registerTicketViewUri struct {
+	TicketUUID string `uri:"ticket" binding:"required,uuid"`
+}
+
+func (o *OriginAPI) RegisterTicketView(ctx *gin.Context) {
+	uri := &registerTicketViewUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		// TODO: change to 404 page
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	ticketUUID := binaryuuid.MustParse(uri.TicketUUID)
+
+	ticketEmail, err := o.DB.GetEmailByTicket(&ticketUUID)
+	if err != nil {
+		// TODO: change to 404 page
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	fmt.Println(ticketEmail)
+	censoredEmail := email.CensorEmail(ticketEmail)
+	ctx.HTML(http.StatusOK, "email_register.tmpl", gin.H{
+		"endpoint": "/auth/regist",
+		"ticket":   ticketUUID,
+		"email":    censoredEmail,
+	})
 }
 
 type loginForm struct {
