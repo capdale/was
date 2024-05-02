@@ -11,7 +11,8 @@ WORKDIR /server
 
 COPY docker/was-linux-amd64 .
 COPY config.yaml .
-COPY templates tests
+COPY /templates ./templates
+COPY /static ./static 
 
 ENV GIN_MODE=release
 
