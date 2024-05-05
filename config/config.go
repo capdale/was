@@ -111,6 +111,7 @@ type Email struct {
 }
 
 type Mock struct {
+	Type string `yaml:"type"`
 }
 
 type Ses struct {
