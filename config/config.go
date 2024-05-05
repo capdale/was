@@ -8,7 +8,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var ErrInvalidConfig = errors.New("invalid config file")
+var (
+	ErrInvalidConfig = errors.New("invalid config file")
+	ErrEmailConfig   = errors.New("invalid email config")
+	ErrStorageConfig = errors.New("invalid storage config")
+)
 var ErrInvalidCredForm = errors.New("invalid cred form")
 
 type Config struct {
@@ -76,7 +80,7 @@ type Key struct {
 }
 
 type Oauth struct {
-	Github Github `yaml:"github"`
+	Github *Github `yaml:"github,omitempty"`
 }
 
 type Github struct {
@@ -107,7 +111,6 @@ type Email struct {
 }
 
 type Mock struct {
-	Type string `yaml:"type"`
 }
 
 type Ses struct {
@@ -130,13 +133,15 @@ func ParseConfig(filepath string) (c *Config, err error) {
 	}
 
 	if c.Storage.Local == nil && c.Storage.S3 == nil {
-		err = fmt.Errorf("%v: invalid storage", ErrInvalidConfig)
-		return
+		err = ErrInvalidConfig
+		err = fmt.Errorf("%w: %w", ErrStorageConfig, err)
 	}
 
 	if c.Email.Mock == nil && c.Email.Ses == nil {
-		err = fmt.Errorf("%v: invalid email", ErrInvalidConfig)
-		return
+		if err == nil {
+			err = ErrInvalidConfig
+		}
+		err = fmt.Errorf("%w: %w", ErrEmailConfig, err)
 	}
 	return
 }
