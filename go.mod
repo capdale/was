@@ -21,6 +21,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )
 
