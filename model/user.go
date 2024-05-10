@@ -14,9 +14,10 @@ const (
 )
 
 type User struct {
-	Id              int64           `gorm:"primaryKey"`
+	Id              uint64          `gorm:"primaryKey"`
 	Username        string          `gorm:"type:varchar(36);uniqueIndex:username;not null"`
-	UUID            binaryuuid.UUID `gorm:"uniqueIndex;"`
+	AuthUUID        binaryuuid.UUID `gorm:"uniqueIndex;"` // this used when authentication
+	UUID            binaryuuid.UUID `gorm:"uniqueIndex;"` // this used when expose identifier
 	AccountType     int
 	Email           string           `gorm:"size:64;uniqueIndex;not null"`
 	CreatedAt       time.Time        `gorm:"autoCreateTime"`
@@ -42,8 +43,8 @@ type SocialUser struct {
 
 type Token struct {
 	// this token is same as jwt token, write when token generated, delete when token blacklist, query when refresh request comes in
-	Id           int64           `gorm:"primaryKey"`
-	UserId       int64           `gorm:"index;"`
+	Id           uint64          `gorm:"primaryKey"`
+	UserId       uint64          `gorm:"index;"`
 	UUID         binaryuuid.UUID `gorm:"index"` // token uuid to identify token
 	RefreshToken []byte          `gorm:"size:60;"`
 	UserAgent    string          `gorm:"type:varchar(225)"`
@@ -54,7 +55,15 @@ type Token struct {
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
 	uid, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	authUUID, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
 	u.UUID = binaryuuid.UUID(uid)
+	u.AuthUUID = binaryuuid.UUID(authUUID)
 	return err
 }
 
@@ -76,13 +85,13 @@ type UserDisplayType struct {
 }
 
 type UserFollow struct {
-	UserId   int64 `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
-	TargetId int64 `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
+	UserId   uint64 `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
+	TargetId uint64 `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
 }
 
 type UserFollowRequest struct {
 	Id         uint64 `gorm:"primaryKey"`
 	UniqueCode byte   `gorm:"type:binary(64);index,unique"`
-	UserId     int64  `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
-	TargetId   int64  `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
+	UserId     uint64 `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
+	TargetId   uint64 `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
 }

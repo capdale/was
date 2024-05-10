@@ -12,7 +12,18 @@ import (
 
 var ErrNoAffectedRow = errors.New("there is no specific row")
 
-func (d *DB) CreateRefreshToken(userId int64, refreshTokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expiredAt time.Time, agent *string) error {
+func (d *DB) GetUserIdByAuthUUID(authUUID binaryuuid.UUID) (uint64, error) {
+	user := &model.User{}
+	if err := d.DB.
+		Select("id").
+		Where("uuid = ?", authUUID).
+		First(user).Error; err != nil {
+		return 0, err
+	}
+	return user.Id, nil
+}
+
+func (d *DB) CreateRefreshToken(userId uint64, refreshTokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expiredAt time.Time, agent *string) error {
 	hashedToken, err := bcrypt.GenerateFromPassword(*refreshToken, bcrypt.MinCost)
 	if err != nil {
 		return err
@@ -60,7 +71,7 @@ func (d *DB) RemoveRefreshToken(refreshToken *[]byte) error {
 	return nil
 }
 
-func (d *DB) QueryAllTokensByUserId(userId int64) (*[]*model.Token, error) {
+func (d *DB) QueryAllTokensByUserId(userId uint64) (*[]*model.Token, error) {
 	tokenMs := []model.Token{}
 	if err := d.DB.
 		Where("id = ?", userId).
@@ -90,7 +101,7 @@ func (d *DB) RemoveTokens(refreshTokens *[]*[]byte) error {
 	return err
 }
 
-func (d *DB) IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[]byte) error {
+func (d *DB) IsTokenPair(userId uint64, tokenExpiredAt time.Time, refreshToken *[]byte) error {
 	result := d.DB.
 		Where("not_before = ? AND refresh_token = ? AND user_id = ?", tokenExpiredAt, refreshToken, userId).
 		First(&model.Token{})
@@ -105,11 +116,11 @@ func (d *DB) IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[
 
 func (d *DB) DeleteUserAccount(claimerUUID *binaryuuid.UUID) error {
 	return d.DB.Transaction(func(tx *gorm.DB) error {
-		var claimerId int64
+		var claimerId uint64
 		if err := tx.
 			Model(&model.User{}).
 			Select("id").
-			Where("uuid = ?", claimerUUID).
+			Where("auth_uuid = ?", claimerUUID).
 			First(&claimerId).Error; err != nil {
 			return err
 		}

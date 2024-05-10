@@ -29,10 +29,10 @@ func (a *AuthClaims) IsExpired() bool {
 	return a.ExpiresAt.Time.Before(time.Now())
 }
 
-func (a *Auth) IssueToken(userUUID binaryuuid.UUID, agent *string) (tokenString string, refreshTokenString string, err error) {
+func (a *Auth) IssueToken(userAuthUUID binaryuuid.UUID, agent *string) (tokenString string, refreshTokenString string, err error) {
 	// this function manage all secure process, store refresh token in db, validate token etc
 	expireAt := time.Now().Add(time.Minute * 30)
-	claims, err := a.generateClaim(userUUID, expireAt)
+	claims, err := a.generateClaim(userAuthUUID, expireAt)
 	if err != nil {
 		return
 	}
@@ -47,7 +47,7 @@ func (a *Auth) IssueToken(userUUID binaryuuid.UUID, agent *string) (tokenString 
 		return
 	}
 
-	userId, err := a.DB.GetUserIdByUUID(userUUID)
+	userId, err := a.DB.GetUserIdByAuthUUID(userAuthUUID)
 	if err != nil {
 		return
 	}

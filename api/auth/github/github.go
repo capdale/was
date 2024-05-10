@@ -121,7 +121,7 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 
 	userAgent := ctx.Request.UserAgent()
 
-	tokenString, refreshToken, err := g.Auth.IssueToken(user.UUID, &userAgent)
+	tokenString, refreshToken, err := g.Auth.IssueToken(user.AuthUUID, &userAgent)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "issue token", err)

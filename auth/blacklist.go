@@ -24,7 +24,7 @@ func (a *Auth) BlackToken(tokenString *string, refreshTokenString *string) error
 	if err != nil {
 		return err
 	}
-	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
+	userId, err := a.DB.GetUserIdByAuthUUID(claims.UUID)
 	if err != nil {
 		return err
 	}

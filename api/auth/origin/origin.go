@@ -19,7 +19,7 @@ type database interface {
 	CreateTicketByEmail(email string) (*binaryuuid.UUID, error)
 	GetEmailByTicket(ticketUUID *binaryuuid.UUID) (string, error)
 	CreateOriginViaTicket(ticket binaryuuid.UUID, username string, password string) error
-	GetOriginUserUUID(username string, password string) (*binaryuuid.UUID, error)
+	GetOriginUserAuthUUID(username string, password string) (*binaryuuid.UUID, error)
 }
 
 type OriginAPI struct {
@@ -138,7 +138,7 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 		return
 	}
 
-	userUUID, err := o.DB.GetOriginUserUUID(form.Username, form.Password)
+	authUUID, err := o.DB.GetOriginUserAuthUUID(form.Username, form.Password)
 	if err != nil {
 		ctx.Status(http.StatusUnauthorized)
 		logger.ErrorWithCTX(ctx, "get origin user", err)
@@ -146,7 +146,7 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 	}
 
 	userAgent := ctx.Request.UserAgent()
-	tokenString, refreshToken, err := o.Auth.IssueToken(*userUUID, &userAgent)
+	tokenString, refreshToken, err := o.Auth.IssueToken(*authUUID, &userAgent)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "issue token", err)
