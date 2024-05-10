@@ -9,7 +9,7 @@ import (
 
 type Collection struct {
 	Id              uint64          `gorm:"primaryKey"`
-	UserId          *int64          `gorm:"index:id"`
+	UserId          *uint64         `gorm:"index:id"`
 	UUID            binaryuuid.UUID `gorm:"uniqueIndex:uuid;not null"`
 	CollectionIndex int64           `gorm:"not null"`
 	Geolocation     Geolocation     `gorm:"embedded;not null"`
@@ -30,7 +30,7 @@ type CollectionUID struct {
 }
 
 type CollectionAPI struct {
-	UserId          *int64      `json:"-"`
+	UserId          *uint64     `json:"-"`
 	CollectionIndex *int64      `json:"index" binding:"required"`
 	Geolocation     Geolocation `json:"geolocation" gorm:"embedded"`
 	OriginAt        *time.Time  `json:"datetime,omitempty"`

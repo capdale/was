@@ -23,14 +23,14 @@ type storage interface {
 }
 
 type database interface {
-	IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID) error
-	GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	GetUserIdByName(username string) (int64, error)
-	GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
-	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
-	HasQueryPermission(claimerId int64, targetId int64) (bool, error)
-	HasAccessPermissionArticleImage(claimerId int64, articleImageUUID *binaryuuid.UUID) (bool, error)
+	IsCollectionOwned(userId uint64, collectionUUIDs *[]binaryuuid.UUID) error
+	GetArticleLinkIdsByUserId(userId uint64, offset int, limit int) (*[]binaryuuid.UUID, error)
+	GetUserIdByUUID(userUUID binaryuuid.UUID) (uint64, error)
+	GetUserIdByName(username string) (uint64, error)
+	GetArticle(claimerId uint64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
+	CreateNewArticle(userId uint64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
+	HasQueryPermission(claimerId uint64, targetId uint64) (bool, error)
+	HasAccessPermissionArticleImage(claimerId uint64, articleImageUUID *binaryuuid.UUID) (bool, error)
 	DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error
 }
 
@@ -191,7 +191,7 @@ func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
 	}
 
-	var claimerId int64 = -1
+	var claimerId uint64 = 0
 
 	if isExist {
 		var err error
@@ -230,7 +230,7 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
 	}
 
-	var claimerId int64 = -1
+	var claimerId uint64 = 0
 
 	if isExist {
 		var err error

@@ -23,11 +23,11 @@ type storage interface {
 }
 
 type database interface {
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
-	GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUID) (*Collection, error)
-	CreateCollection(userId int64, collection *Collection, collectionUUID binaryuuid.UUID) error
-	HasAccessPermissionCollection(claimerId int64, collectionUUID binaryuuid.UUID) error
+	GetUserIdByUUID(userUUID binaryuuid.UUID) (uint64, error)
+	GetCollectionUUIDs(userId uint64, offset int, limit int) (*[]binaryuuid.UUID, error)
+	GetCollectionByUUID(claimerId uint64, collectionUUID *binaryuuid.UUID) (*Collection, error)
+	CreateCollection(userId uint64, collection *Collection, collectionUUID binaryuuid.UUID) error
+	HasAccessPermissionCollection(claimerId uint64, collectionUUID binaryuuid.UUID) error
 	DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryuuid.UUID) error
 }
 
@@ -165,7 +165,7 @@ func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
 	collectionUUID := binaryuuid.MustParse(uri.CollectionUUID)
 
 	claimePtr, exist := ctx.Get("claims")
-	var claimerId int64 = -1
+	var claimerId uint64 = 0
 	if exist {
 		var err error
 		claim := claimePtr.(*auth.AuthClaims)
@@ -199,7 +199,7 @@ func (a *CollectAPI) GetCollectionImageHandler(ctx *gin.Context) {
 		return
 	}
 
-	var claimerId int64 = -1
+	var claimerId uint64 = 0
 
 	claimsPtr, isExists := ctx.Get("claims")
 	if isExists {

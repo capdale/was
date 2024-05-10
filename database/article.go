@@ -12,9 +12,9 @@ var (
 	ErrInvalidPermission = errors.New("invalid permission")
 )
 
-func (d *DB) IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID) error {
+func (d *DB) IsCollectionOwned(userId uint64, collectionUUIDs *[]binaryuuid.UUID) error {
 	var count int64
-	querys := make([]int64, len(*collectionUUIDs))
+	querys := make([]uint64, len(*collectionUUIDs))
 	for i := 0; i < len(*collectionUUIDs); i++ {
 		querys[i] = userId
 	}
@@ -32,7 +32,7 @@ func (d *DB) IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID)
 	return nil
 }
 
-func (d *DB) CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error {
+func (d *DB) CreateNewArticle(userId uint64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error {
 	collections := make([]*model.ArticleCollection, len(*collectionUUIDs))
 	for i, cuid := range *collectionUUIDs {
 		collections[i] = &model.ArticleCollection{CollectionUUID: cuid, Order: (*collectionOrder)[i]}
@@ -55,7 +55,7 @@ func (d *DB) CreateNewArticle(userId int64, title string, content string, collec
 	}).Error
 }
 
-func (d *DB) GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
+func (d *DB) GetArticle(claimerId uint64, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
 	hasPermission, err := d.hasPermissionArticle(claimerId, &linkId)
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func (d *DB) GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.Article
 	return article, err
 }
 
-func (d *DB) hasPermissionArticle(claimerId int64, linkId *binaryuuid.UUID) (bool, error) {
-	var ownerId int64
+func (d *DB) hasPermissionArticle(claimerId uint64, linkId *binaryuuid.UUID) (bool, error) {
+	var ownerId uint64
 	if err := d.DB.
 		Model(&model.Article{}).
 		Select("user_id").
@@ -88,7 +88,7 @@ func (d *DB) hasPermissionArticle(claimerId int64, linkId *binaryuuid.UUID) (boo
 	return d.HasQueryPermission(claimerId, ownerId)
 }
 
-func (d *DB) GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error) {
+func (d *DB) GetArticleLinkIdsByUserId(userId uint64, offset int, limit int) (*[]binaryuuid.UUID, error) {
 	if offset < 0 || limit < 1 || limit > 100 {
 		return nil, ErrInvalidInput
 	}
@@ -123,7 +123,7 @@ func (d *DB) GetArticlesByUserUUID(userUUID binaryuuid.UUID, offset int, limit i
 	return &articles, nil
 }
 
-func (d *DB) HasAccessPermissionArticleImage(claimerId int64, articleImageUUID *binaryuuid.UUID) (bool, error) {
+func (d *DB) HasAccessPermissionArticleImage(claimerId uint64, articleImageUUID *binaryuuid.UUID) (bool, error) {
 	imageOwner, err := d.getArticleOwnerIdByArticleImage(articleImageUUID)
 	if err != nil {
 		return false, err
@@ -131,15 +131,15 @@ func (d *DB) HasAccessPermissionArticleImage(claimerId int64, articleImageUUID *
 	return d.HasQueryPermission(claimerId, imageOwner)
 }
 
-func (d *DB) getArticleOwnerIdByArticleImage(articleImageUUID *binaryuuid.UUID) (int64, error) {
-	var userId int64
+func (d *DB) getArticleOwnerIdByArticleImage(articleImageUUID *binaryuuid.UUID) (uint64, error) {
+	var userId uint64
 	if err := d.DB.
 		Model(&model.Article{}).
 		Select("article.user_id").
 		Joins("JOIN article_images ON articles.id = article_images.id").
 		Where("article_images.image_uuid = ?", articleImageUUID).
 		First(&userId).Error; err != nil {
-		return -1, err
+		return 0, err
 	}
 	return userId, nil
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/capdale/was/types/binaryuuid"
 )
 
-func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error) {
+func (d *DB) GetCollectionUUIDs(userId uint64, offset int, limit int) (*[]binaryuuid.UUID, error) {
 	collections := []model.Collection{}
 	err := d.DB.
 		Select("uuid").
@@ -20,7 +20,7 @@ func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryu
 	return &uuids, err
 }
 
-func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
+func (d *DB) GetCollectionByUUID(claimerId uint64, collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
 	collection = &model.CollectionAPI{}
 	if err = d.DB.
 		Model(&model.Collection{}).
@@ -46,7 +46,7 @@ func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUI
 	return
 }
 
-func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, collectionUUID binaryuuid.UUID) error {
+func (d *DB) CreateCollection(userId uint64, collection *model.CollectionAPI, collectionUUID binaryuuid.UUID) error {
 	c := &model.Collection{
 		UserId:          &userId,
 		UUID:            collectionUUID,
@@ -73,8 +73,8 @@ func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, col
 
 // TODO: if claimerUUID is nil, retrieve as public
 // if collection is user owned return nil
-func (d *DB) HasAccessPermissionCollection(claimerId int64, collectionUUID binaryuuid.UUID) error {
-	var ownerId int64
+func (d *DB) HasAccessPermissionCollection(claimerId uint64, collectionUUID binaryuuid.UUID) error {
+	var ownerId uint64
 	if err := d.DB.
 		Model(&model.Collection{}).
 		Select("user_id").

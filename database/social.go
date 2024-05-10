@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func (d *DB) HasQueryPermission(claimerId int64, targetId int64) (bool, error) {
+func (d *DB) HasQueryPermission(claimerId uint64, targetId uint64) (bool, error) {
 	if claimerId == targetId {
 		return true, nil
 	}
@@ -24,7 +24,7 @@ func (d *DB) HasQueryPermission(claimerId int64, targetId int64) (bool, error) {
 		return true, nil
 	}
 
-	if claimerId == -1 {
+	if claimerId == 0 {
 		return false, nil
 	}
 
@@ -75,14 +75,14 @@ func (d *DB) RequestFollow(claimer binaryuuid.UUID, target string) error {
 	}).Error
 }
 
-func (d *DB) followUser(followerId int64, followingId int64) error {
+func (d *DB) followUser(followerId uint64, followingId uint64) error {
 	return d.DB.Create(&model.UserFollow{
 		UserId:   followerId,
 		TargetId: followingId,
 	}).Error
 }
 
-func (d *DB) IsUserPublic(userId int64) (bool, error) {
+func (d *DB) IsUserPublic(userId uint64) (bool, error) {
 	display := &model.UserDisplayType{}
 	if err := d.DB.
 		Select("is_private").

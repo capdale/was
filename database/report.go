@@ -11,7 +11,7 @@ var (
 	ErrInvalidDetailType = errors.New("error invalid detail type")
 )
 
-func (d *DB) CreateReportUser(issuerId int64, targetUsername string, detailType int, description string) error {
+func (d *DB) CreateReportUser(issuerId uint64, targetUsername string, detailType int, description string) error {
 	userId, err := d.GetUserIdByName(targetUsername)
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func (d *DB) CreateReportUser(issuerId int64, targetUsername string, detailType 
 	return d.DB.Create(reportUser).Error
 }
 
-func (d *DB) CreateReportArticle(issuerId int64, linkUUID binaryuuid.UUID, detailType int, description string) error {
+func (d *DB) CreateReportArticle(issuerId uint64, linkUUID binaryuuid.UUID, detailType int, description string) error {
 	var articleId uint64
 	if err := d.DB.
 		Select("id").
@@ -47,7 +47,7 @@ func (d *DB) CreateReportArticle(issuerId int64, linkUUID binaryuuid.UUID, detai
 	return d.DB.Create(reportArticle).Error
 }
 
-func (d *DB) CreateReportBug(issuerId int64, title string, description string) error {
+func (d *DB) CreateReportBug(issuerId uint64, title string, description string) error {
 	reportBug := &model.ReportBug{
 		ReportModel: model.ReportModel{
 			IssuerId:    issuerId,
@@ -57,7 +57,7 @@ func (d *DB) CreateReportBug(issuerId int64, title string, description string) e
 	return d.DB.Create(reportBug).Error
 }
 
-func (d *DB) CreateReportHelp(issuerId int64, title string, description string) error {
+func (d *DB) CreateReportHelp(issuerId uint64, title string, description string) error {
 	reportHelp := &model.ReportHelp{
 		ReportModel: model.ReportModel{
 			IssuerId:    issuerId,
@@ -67,7 +67,7 @@ func (d *DB) CreateReportHelp(issuerId int64, title string, description string) 
 	return d.DB.Create(reportHelp).Error
 }
 
-func (d *DB) CreateReportEtc(issuerId int64, title string, description string) error {
+func (d *DB) CreateReportEtc(issuerId uint64, title string, description string) error {
 	reportEtc := &model.ReportEtc{
 		ReportModel: model.ReportModel{
 			IssuerId:    issuerId,

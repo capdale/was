@@ -8,11 +8,11 @@ import (
 )
 
 type database interface {
-	CreateRefreshToken(userId int64, tokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expireAt time.Time, agent *string) error
-	IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[]byte) error
+	CreateRefreshToken(userId uint64, tokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expireAt time.Time, agent *string) error
+	IsTokenPair(userId uint64, tokenExpiredAt time.Time, refreshToken *[]byte) error
 	PopRefreshToken(refreshTokenUID *binaryuuid.UUID) (*model.Token, error)
-	GetUserById(userId int64) (user *model.User, err error)
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
+	GetUserById(userId uint64) (user *model.User, err error)
+	GetUserIdByAuthUUID(authUUID binaryuuid.UUID) (uint64, error)
 }
 
 type store interface {

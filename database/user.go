@@ -16,7 +16,7 @@ var (
 	ErrEmailAlreadyUsed = errors.New("email already used")
 )
 
-func (d *DB) ExchangeIDs2Names(ids *[]int64) (*[]string, error) {
+func (d *DB) ExchangeIDs2Names(ids *[]uint64) (*[]string, error) {
 	names := make([]string, len(*ids))
 	result := d.DB.
 		Model(&model.User{}).
@@ -32,7 +32,7 @@ func (d *DB) ExchangeIDs2Names(ids *[]int64) (*[]string, error) {
 	return &names, nil
 }
 
-func (d *DB) GetUserById(userId int64) (*model.User, error) {
+func (d *DB) GetUserById(userId uint64) (*model.User, error) {
 	user := &model.User{}
 	err := d.DB.
 		Where("id = ?", userId).
@@ -64,7 +64,7 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 	return user, err
 }
 
-func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error) {
+func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (uint64, error) {
 	user := &model.User{}
 	if err := d.DB.
 		Select("id").
@@ -75,7 +75,7 @@ func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error) {
 	return user.Id, nil
 }
 
-func (d *DB) GetUserIdByName(username string) (int64, error) {
+func (d *DB) GetUserIdByName(username string) (uint64, error) {
 	user := &model.User{}
 	if err := d.DB.
 		Select("id").
@@ -198,11 +198,11 @@ type useruuidNhashed struct {
 	Hashed []byte
 }
 
-func (d *DB) GetOriginUserUUID(username string, password string) (*binaryuuid.UUID, error) {
+func (d *DB) GetOriginUserAuthUUID(username string, password string) (*binaryuuid.UUID, error) {
 	user := &useruuidNhashed{}
 	if err := d.DB.
 		Model(&model.User{}).
-		Select("users.uuid", "origin_users.hashed").
+		Select("users.auth_uuid", "origin_users.hashed").
 		Joins("INNER JOIN origin_users ON origin_users.id = users.id").
 		Where("username = ? AND account_type = ?", username, model.AccountTypeOrigin).
 		First(user).Error; err != nil {

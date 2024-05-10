@@ -15,12 +15,12 @@ import (
 var logger = baseLogger.Logger
 
 type database interface {
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	CreateReportUser(issuerId int64, targetUsername string, detailType int, description string) error
-	CreateReportArticle(issuerId int64, targetarticleUUID binaryuuid.UUID, detailType int, description string) error
-	CreateReportBug(issuerId int64, title string, description string) error
-	CreateReportHelp(issuerId int64, title string, description string) error
-	CreateReportEtc(issuerId int64, title string, description string) error
+	GetUserIdByUUID(userUUID binaryuuid.UUID) (uint64, error)
+	CreateReportUser(issuerId uint64, targetUsername string, detailType int, description string) error
+	CreateReportArticle(issuerId uint64, targetarticleUUID binaryuuid.UUID, detailType int, description string) error
+	CreateReportBug(issuerId uint64, title string, description string) error
+	CreateReportHelp(issuerId uint64, title string, description string) error
+	CreateReportEtc(issuerIdu uint64, title string, description string) error
 }
 
 type ReportAPI struct {
@@ -55,7 +55,7 @@ func (r *ReportAPI) PostUserReportHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId int64 = -1 // defulat issuer is -1 = anonymous
+	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
 	claimsPtr, isExist := ctx.Get("claims")
 	if isExist {
 		var err error
@@ -105,7 +105,7 @@ func (r *ReportAPI) PostReportArticleHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId int64 = -1 // defulat issuer is -1 = anonymous
+	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
 	claimsPtr, isExist := ctx.Get("claims")
 	if isExist {
 		var err error
@@ -141,7 +141,7 @@ func (r *ReportAPI) PostReportBugHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId int64 = -1 // defulat issuer is -1 = anonymous
+	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
 	claimsPtr, isExist := ctx.Get("claims")
 	if isExist {
 		var err error
@@ -177,7 +177,7 @@ func (r *ReportAPI) PostReportHelpHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId int64 = -1 // defulat issuer is -1 = anonymous
+	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
 	claimsPtr, isExist := ctx.Get("claims")
 	if isExist {
 		claims := claimsPtr.(*auth.AuthClaims)
@@ -213,7 +213,7 @@ func (r *ReportAPI) PostReportEtcHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId int64 = -1 // defulat issuer is -1 = anonymous
+	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
 	claimsPtr, isExist := ctx.Get("claims")
 	if isExist {
 		claims := claimsPtr.(*auth.AuthClaims)
