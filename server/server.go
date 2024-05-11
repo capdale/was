@@ -54,23 +54,9 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	r.Use(ginzap.Ginzap(routerLogger, time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(routerLogger, true))
+	r.Use(cors.New(*createCorsConfig(&config.Service.Cors)))
 
-	r.Use(cors.New(
-		cors.Config{
-			AllowOrigins:           config.Service.Cors.AllowOrigins,
-			AllowMethods:           config.Service.Cors.AllowMethods,
-			AllowHeaders:           config.Service.Cors.AllowHeaders,
-			AllowCredentials:       config.Service.Cors.AllowCredentials,
-			ExposeHeaders:          config.Service.Cors.ExposeHeaders,
-			MaxAge:                 time.Duration(config.Service.Cors.MaxAge) * time.Second,
-			AllowWildcard:          config.Service.Cors.AllowWildcard,
-			AllowBrowserExtensions: config.Service.Cors.AllowBrowserExtensions,
-			AllowWebSockets:        config.Service.Cors.AllowWebSockets,
-			AllowFiles:             config.Service.Cors.AllowFiles,
-		},
-	))
-
-	d, err := database.New(&config.Mysql)
+	d, err := database.New(&config.Database)
 	if err != nil {
 		return
 	}

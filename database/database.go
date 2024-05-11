@@ -7,6 +7,7 @@ import (
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/model"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -14,7 +15,30 @@ type DB struct {
 	DB *gorm.DB
 }
 
-func New(mysqlConfig *config.Mysql) (db *DB, err error) {
+func New(databaseConfig *config.Database) (db *DB, err error) {
+	if databaseConfig.SQLite != nil {
+		return NewSQLite(databaseConfig.SQLite)
+	}
+	if databaseConfig.Mysql != nil {
+		return NewMySQL(databaseConfig.Mysql)
+	}
+	return nil, config.ErrEmailConfig
+}
+
+func NewSQLite(sqliteConfig *config.SQLite) (db *DB, err error) {
+	d, err := gorm.Open(sqlite.Open(sqliteConfig.Path), &gorm.Config{})
+	if err != nil {
+		return
+	}
+
+	db = &DB{
+		DB: d,
+	}
+	err = db.AutoMigrate()
+	return
+}
+
+func NewMySQL(mysqlConfig *config.Mysql) (db *DB, err error) {
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/was?charset=utf8mb4&parseTime=True&loc=Local",
 		mysqlConfig.Username,
@@ -33,9 +57,9 @@ func New(mysqlConfig *config.Mysql) (db *DB, err error) {
 		return
 	}
 
-	sqldb.SetMaxIdleConns(10)
-	sqldb.SetMaxOpenConns(0)
-	sqldb.SetConnMaxLifetime(time.Minute * 3)
+	sqldb.SetMaxIdleConns(mysqlConfig.MaxIdleConns)
+	sqldb.SetMaxOpenConns(mysqlConfig.MaxOpenConns)
+	sqldb.SetConnMaxLifetime(time.Second * time.Duration(mysqlConfig.MaxLifetime))
 
 	db = &DB{
 		DB: d,
