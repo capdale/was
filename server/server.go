@@ -56,7 +56,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	r.Use(ginzap.RecoveryWithZap(routerLogger, true))
 	r.Use(cors.New(*createCorsConfig(&config.Service.Cors)))
 
-	d, err := database.New(&config.Database)
+	d, err := database.New(&config.Database, 0)
 	if err != nil {
 		return
 	}
