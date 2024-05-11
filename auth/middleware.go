@@ -24,8 +24,7 @@ func (a *Auth) AuthorizeRequiredMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set("token", tokenString)
-		ctx.Set("claims", claims)
+		ctx.Set("claimer", &claims.Claimer)
 		ctx.Next()
 	}
 }
@@ -44,8 +43,7 @@ func (a *Auth) AuthorizeOptionalMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set("token", tokenString)
-		ctx.Set("claims", claims)
+		ctx.Set("claimer", &claims.Claimer)
 		ctx.Next()
 	}
 }

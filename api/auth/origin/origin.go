@@ -8,6 +8,7 @@ import (
 	"github.com/capdale/was/email"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,11 +16,11 @@ var logger = baselogger.Logger
 
 type database interface {
 	IsEmailUsed(email string) (bool, error)
-	IsTicketAvailable(ticketUUID binaryuuid.UUID) (bool, error)
+	IsTicketAvailable(ticketUUID *binaryuuid.UUID) (bool, error)
 	CreateTicketByEmail(email string) (*binaryuuid.UUID, error)
 	GetEmailByTicket(ticketUUID *binaryuuid.UUID) (string, error)
-	CreateOriginViaTicket(ticket binaryuuid.UUID, username string, password string) error
-	GetOriginUserAuthUUID(username string, password string) (*binaryuuid.UUID, error)
+	CreateOriginViaTicket(ticket *binaryuuid.UUID, username string, password string) error
+	GetOriginUserClaimerAndUUID(username string, password string) (*claimer.Claimer, *binaryuuid.UUID, error)
 }
 
 type OriginAPI struct {
@@ -84,7 +85,7 @@ func (o *OriginAPI) RegisterTicketHandler(ctx *gin.Context) {
 
 	ticketUUID := binaryuuid.MustParse(form.Ticket)
 
-	err = o.DB.CreateOriginViaTicket(ticketUUID, form.Username, form.Password)
+	err = o.DB.CreateOriginViaTicket(&ticketUUID, form.Username, form.Password)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "create origin via ticket", err)
@@ -138,7 +139,7 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 		return
 	}
 
-	authUUID, err := o.DB.GetOriginUserAuthUUID(form.Username, form.Password)
+	claimer, uuid, err := o.DB.GetOriginUserClaimerAndUUID(form.Username, form.Password)
 	if err != nil {
 		ctx.Status(http.StatusUnauthorized)
 		logger.ErrorWithCTX(ctx, "get origin user", err)
@@ -146,13 +147,14 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 	}
 
 	userAgent := ctx.Request.UserAgent()
-	tokenString, refreshToken, err := o.Auth.IssueToken(*authUUID, &userAgent)
+	tokenString, refreshToken, err := o.Auth.IssueToken(*claimer, &userAgent)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "issue token", err)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
+		"user_uuid":     uuid.String(),
 		"access_token":  tokenString,
 		"refresh_token": refreshToken,
 	})

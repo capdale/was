@@ -7,10 +7,10 @@ import (
 	"net/http"
 
 	"github.com/capdale/was/api"
-	"github.com/capdale/was/auth"
 	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,12 +23,11 @@ type storage interface {
 }
 
 type database interface {
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (uint64, error)
-	GetCollectionUUIDs(userId uint64, offset int, limit int) (*[]binaryuuid.UUID, error)
-	GetCollectionByUUID(claimerId uint64, collectionUUID *binaryuuid.UUID) (*Collection, error)
-	CreateCollection(userId uint64, collection *Collection, collectionUUID binaryuuid.UUID) error
-	HasAccessPermissionCollection(claimerId uint64, collectionUUID binaryuuid.UUID) error
-	DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryuuid.UUID) error
+	GetUserCollectionUUIDs(targetUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error)
+	GetCollectionByUUID(claimer *claimer.Claimer, collectionUUID *binaryuuid.UUID) (*Collection, error)
+	CreateCollection(claimer *claimer.Claimer, collection *Collection, collectionUUID binaryuuid.UUID) error
+	HasAccessPermissionCollection(claimer *claimer.Claimer, collectionUUID binaryuuid.UUID) error
+	DeleteCollection(claimer *claimer.Claimer, collectionUUID *binaryuuid.UUID) error
 }
 
 type CollectAPI struct {
@@ -45,38 +44,40 @@ func New(database database, storage storage) *CollectAPI {
 
 type Collection = model.CollectionAPI
 
-type getCollectionform struct {
+type getUserCollectionsUri struct {
+	TargetUUID string `uri:"user" binding:"required,uuid"`
+}
+
+type getUserCollectionform struct {
 	Offset *int `form:"offset" binding:"required,min=0"`
 	Limit  *int `form:"limit" binding:"required,min=1,max=100"` // this not need pointer (because min is 1 never be 0), but for consistency
 }
 
-type getCollectionRes struct {
+type getUserCollectionRes struct {
 	Collections []binaryuuid.UUID `json:"collections"`
 }
 
-func (a *CollectAPI) GetCollectection(ctx *gin.Context) {
-	form := &getCollectionform{}
+func (a *CollectAPI) GetUserCollectections(ctx *gin.Context) {
+	form := &getUserCollectionform{}
 	if err := ctx.Bind(form); err != nil {
 		logger.ErrorWithCTX(ctx, "binding form", err)
 		return
 	}
-
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
-	if err != nil {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
+	uri := &getUserCollectionsUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		logger.ErrorWithCTX(ctx, "binding uri", err)
 		return
 	}
 
-	collections, err := a.DB.GetCollectionUUIDs(userId, *form.Offset, *form.Limit)
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	collections, err := a.DB.GetUserCollectionUUIDs(&targetUUID, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "db get collections", err)
 		return
 	}
 
-	res := &getCollectionRes{
+	res := &getUserCollectionRes{
 		Collections: *collections,
 	}
 	ctx.JSON(http.StatusOK, res)
@@ -88,7 +89,6 @@ type createCollectionForm struct {
 }
 
 func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	form := &createCollectionForm{}
 	if err := ctx.Bind(form); err != nil {
 		api.BasicBadRequestError(ctx)
@@ -108,12 +108,7 @@ func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 		return
 	}
 
-	userId, err := a.DB.GetUserIdByUUID(claims.UUID)
-	if err != nil {
-		api.BasicBadRequestError(ctx)
-		logger.ErrorWithCTX(ctx, "query user id by uuid", err)
-		return
-	}
+	claimerAuthUUID := api.MustGetClaimer(ctx)
 
 	collectionUUID, err := binaryuuid.NewRandom()
 	if err != nil {
@@ -137,7 +132,7 @@ func (a *CollectAPI) CreateCollectionHandler(ctx *gin.Context) {
 		return
 	}
 
-	err = a.DB.CreateCollection(userId, &form.Info, collectionUUID)
+	err = a.DB.CreateCollection(claimerAuthUUID, &form.Info, collectionUUID)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create collection with useruuid", err)
@@ -154,7 +149,7 @@ type getCollectionForm struct {
 	CollectionUUID string `uri:"uuid" binding:"required,uuid"`
 }
 
-func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
+func (a *CollectAPI) GetCollectionHandler(ctx *gin.Context) {
 	uri := &getCollectionForm{}
 	if err := ctx.BindUri(uri); err != nil {
 		api.BasicBadRequestError(ctx)
@@ -163,21 +158,8 @@ func (a *CollectAPI) GetCollectionByUUID(ctx *gin.Context) {
 	}
 
 	collectionUUID := binaryuuid.MustParse(uri.CollectionUUID)
-
-	claimePtr, exist := ctx.Get("claims")
-	var claimerId uint64 = 0
-	if exist {
-		var err error
-		claim := claimePtr.(*auth.AuthClaims)
-		claimerId, err = a.DB.GetUserIdByUUID(claim.UUID)
-		if err != nil {
-			ctx.Status(http.StatusNotFound)
-			logger.ErrorWithCTX(ctx, "id by uuid", err)
-			return
-		}
-	}
-
-	collection, err := a.DB.GetCollectionByUUID(claimerId, &collectionUUID)
+	claimerAuthUUID := api.GetClaimer(ctx)
+	collection, err := a.DB.GetCollectionByUUID(claimerAuthUUID, &collectionUUID)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get collection by uuid", err)
@@ -199,21 +181,9 @@ func (a *CollectAPI) GetCollectionImageHandler(ctx *gin.Context) {
 		return
 	}
 
-	var claimerId uint64 = 0
-
-	claimsPtr, isExists := ctx.Get("claims")
-	if isExists {
-		var err error
-		claims := claimsPtr.(*auth.AuthClaims)
-		claimerId, err = a.DB.GetUserIdByUUID(claims.UUID)
-		if err != nil {
-			ctx.Status(http.StatusInternalServerError)
-			return
-		}
-	}
-
 	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
-	err := a.DB.HasAccessPermissionCollection(claimerId, imageUUID)
+	claimerAuthUUID := api.GetClaimer(ctx)
+	err := a.DB.HasAccessPermissionCollection(claimerAuthUUID, imageUUID)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "check permission", err)
@@ -241,15 +211,14 @@ func (a *CollectAPI) DeleteCollectionHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	claimerAuthUUID := api.MustGetClaimer(ctx)
 	collectionUUID := binaryuuid.MustParse(uri.CollectionUUID)
 
-	if err := a.DB.DeleteCollection(&claims.UUID, &collectionUUID); err != nil {
+	if err := a.DB.DeleteCollection(claimerAuthUUID, &collectionUUID); err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "delete collection", err)
 		return
 	}
 
 	ctx.Status(http.StatusNoContent)
-	return
 }

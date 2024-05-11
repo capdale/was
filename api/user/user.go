@@ -3,9 +3,9 @@ package userAPI
 import (
 	"net/http"
 
-	"github.com/capdale/was/auth"
+	"github.com/capdale/was/api"
 	baselogger "github.com/capdale/was/logger"
-	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,7 +14,7 @@ var logger = baselogger.Logger
 type database interface {
 	UserVisibilityPublic() int
 	UserVisibilityPrivate() int
-	ChangeVisibility(claimerUUID *binaryuuid.UUID, visibilityType int) error
+	ChangeVisibility(claimer *claimer.Claimer, visibilityType int) error
 }
 
 type UserAPI struct {
@@ -39,7 +39,7 @@ func (a *UserAPI) ChangeVisibilityHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
+	claimer := api.MustGetClaimer(ctx)
 
 	changeType := a.d.UserVisibilityPrivate()
 	// don't check error state, bind check it already
@@ -47,7 +47,7 @@ func (a *UserAPI) ChangeVisibilityHandler(ctx *gin.Context) {
 		changeType = a.d.UserVisibilityPublic()
 	}
 
-	if err := a.d.ChangeVisibility(&claims.UUID, changeType); err != nil {
+	if err := a.d.ChangeVisibility(claimer, changeType); err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "change visibility", err)
 		return

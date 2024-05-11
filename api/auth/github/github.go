@@ -9,6 +9,7 @@ import (
 	"github.com/capdale/was/auth"
 	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -120,8 +121,8 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	}
 
 	userAgent := ctx.Request.UserAgent()
-
-	tokenString, refreshToken, err := g.Auth.IssueToken(user.AuthUUID, &userAgent)
+	claimer := claimer.New(&user.AuthUUID)
+	tokenString, refreshToken, err := g.Auth.IssueToken(*claimer, &userAgent)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "issue token", err)
@@ -129,6 +130,7 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
+		"user_uuid":     user.UUID.String(),
 		"access_token":  tokenString,
 		"refresh_token": refreshToken,
 	})

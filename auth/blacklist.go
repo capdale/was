@@ -24,12 +24,7 @@ func (a *Auth) BlackToken(tokenString *string, refreshTokenString *string) error
 	if err != nil {
 		return err
 	}
-	userId, err := a.DB.GetUserIdByAuthUUID(claims.UUID)
-	if err != nil {
-		return err
-	}
-
-	if err := a.DB.IsTokenPair(userId, claims.ExpiresAt.Time, &refreshToken); err != nil {
+	if err := a.DB.IsTokenPair(claims.Claimer, claims.ExpiresAt.Time, &refreshToken); err != nil {
 		return err
 	}
 	return nil

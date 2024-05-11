@@ -5,86 +5,93 @@ import (
 
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"gorm.io/gorm"
 )
 
-func (d *DB) HasQueryPermission(claimerId uint64, targetId uint64) (bool, error) {
+func hasQueryPermission(tx *gorm.DB, claimerId uint64, targetId uint64) (bool, error) {
 	if claimerId == targetId {
 		return true, nil
 	}
-
-	userDisplayType := &model.UserDisplayType{}
-	if err := d.DB.
-		Select("is_private").
-		Where("user_id = ?", targetId).
-		First(userDisplayType).Error; err != nil {
-		return false, err
-	}
-	if !userDisplayType.IsPrivate {
-		return true, nil
-	}
-
-	if claimerId == 0 {
-		return false, nil
-	}
-
-	var exist bool
-
-	err := d.DB.
-		Model(&model.UserFollow{}).
-		Select("count(*) > 0").
-		Where("user_id = ? AND target_id = ?", claimerId, targetId).
-		Find(&exist).Error
-
-	if err != nil {
-		return false, err
-	}
-	return exist, nil
+	var exist bool = false
+	err := tx.Transaction(func(tx *gorm.DB) error {
+		userDisplayType := &model.UserDisplayType{}
+		if err := tx.
+			Select("is_private").
+			Where("user_id = ?", targetId).
+			First(userDisplayType).Error; err != nil {
+			return err
+		}
+		if !userDisplayType.IsPrivate {
+			exist = true
+			return nil
+		}
+		return tx.
+			Model(&model.UserFollow{}).
+			Select("count(*) > 0").
+			Where("user_id = ? AND target_id = ?", claimerId, targetId).
+			Find(&exist).Error
+	})
+	return exist, err
 }
 
-func (d *DB) RequestFollow(claimer binaryuuid.UUID, target string) error {
+func (d *DB) RequestFollow(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 
-	claimerId, err := d.GetUserIdByUUID(claimer)
-	if err != nil {
-		return err
-	}
+		targetId, err := getUserIdByUUID(tx, targetUUID)
+		if err != nil {
+			return err
+		}
 
-	targetId, err := d.GetUserIdByName(target)
-	if err != nil {
-		return err
-	}
+		if claimerId == targetId {
+			return ErrInvalidInput
+		}
+		isPublic, err := isUserPublic(tx, targetId)
+		if err != nil {
+			return err
+		}
 
-	if claimerId == targetId {
-		return ErrInvalidInput
-	}
+		// if target user is public account, then follow is done immediately
+		if isPublic {
+			return followUser(tx, claimerId, targetId)
+		}
 
-	isPublic, err := d.IsUserPublic(targetId)
-	if err != nil {
-		return err
-	}
-
-	// if target user is public account, then follow is done immediately
-	if isPublic {
-		return d.followUser(claimerId, targetId)
-	}
-
-	// if target user is private account, then request follow
-	return d.DB.Create(&model.UserFollowRequest{
-		UserId:   claimerId,
-		TargetId: targetId,
-	}).Error
+		// if target user is private account, then request follow
+		return tx.Create(&model.UserFollowRequest{
+			UserId:   claimerId,
+			TargetId: targetId,
+		}).Error
+	})
 }
 
-func (d *DB) followUser(followerId uint64, followingId uint64) error {
-	return d.DB.Create(&model.UserFollow{
+func followUser(tx *gorm.DB, followerId uint64, followingId uint64) error {
+	return tx.Create(&model.UserFollow{
 		UserId:   followerId,
 		TargetId: followingId,
 	}).Error
 }
 
-func (d *DB) IsUserPublic(userId uint64) (bool, error) {
+func (d *DB) IsUserPublic(userUUID *binaryuuid.UUID) (bool, error) {
+	var public = false
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+		userId, err := getUserIdByUUID(tx, userUUID)
+		if err != nil {
+			return err
+		}
+		public, err = isUserPublic(tx, userId)
+		return err
+	})
+	return public, err
+}
+
+func isUserPublic(tx *gorm.DB, userId uint64) (bool, error) {
 	display := &model.UserDisplayType{}
-	if err := d.DB.
+	if err := tx.
 		Select("is_private").
 		Where("user_id = ?", userId).
 		First(&display).Error; err != nil {
@@ -93,97 +100,110 @@ func (d *DB) IsUserPublic(userId uint64) (bool, error) {
 	return !display.IsPrivate, nil
 }
 
-func (d *DB) IsFollower(claimerUUID binaryuuid.UUID, targetname string) (isFollower bool, err error) {
-	claimerId, err := d.GetUserIdByUUID(claimerUUID)
-	if err != nil {
-		return
-	}
-	targetId, err := d.GetUserIdByName(targetname)
-	if err != nil {
-		return
-	}
-	r := &model.UserFollow{}
-	if err = d.DB.
-		Select("").
-		Where("user_id = ? AND target_id = ?", claimerId, targetId).
-		First(r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil
+func (d *DB) IsFollower(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) (isFollower bool, err error) {
+	err = d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
 		}
-		return
-	}
-	return true, nil
+		targetId, err := getUserIdByUUID(tx, targetUUID)
+		if err != nil {
+			return err
+		}
+		r := &model.UserFollow{}
+		if err = tx.
+			Select("").
+			Where("user_id = ? AND target_id = ?", claimerId, targetId).
+			First(r).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		isFollower = true
+		return nil
+	})
+	return
 }
 
-func (d *DB) IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error) {
-	claimerId, err := d.GetUserIdByUUID(claimerUUID)
-	if err != nil {
-		return false, err
-	}
-	targetId, err := d.GetUserIdByName(targetname)
-	if err != nil {
-		return false, err
-	}
-	r := &model.UserFollow{}
-	if err = d.DB.
-		Select("").
-		Where("user_id = ? AND target_id = ?", targetId, claimerId).
-		First(r).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil
+func (d *DB) IsFollowing(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) (isFollowing bool, err error) {
+	err = d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
 		}
-		return false, err
-	}
-	return true, nil
+		targetId, err := getUserIdByUUID(tx, targetUUID)
+		if err != nil {
+			return err
+		}
+		r := &model.UserFollow{}
+		if err = tx.
+			Select("").
+			Where("user_id = ? AND target_id = ?", targetId, claimerId).
+			First(r).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		isFollowing = true
+		return nil
+	})
+	return
 }
 
-func (d *DB) GetFollowers(username string, offset int, limit int) (*[]string, error) {
-	userId, err := d.GetUserIdByName(username)
-	if err != nil {
-		return nil, err
-	}
-
+func (d *DB) GetFollowers(userUUID *binaryuuid.UUID, offset int, limit int) (*[]string, error) {
 	followerNames := []string{}
-	if err := d.DB.
-		Model(&model.User{}).
-		Select("users.username").
-		Joins("JOIN user_follows ON user_follows.target_id = ? AND user_follows.user_id = users.id", userId).
-		Offset(offset).
-		Limit(limit).
-		Find(&followerNames).Error; err != nil {
-		return nil, err
-	}
-	return &followerNames, nil
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		userId, err := getUserIdByUUID(tx, userUUID)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.
+			Model(&model.User{}).
+			Select("users.username").
+			Joins("JOIN user_follows ON user_follows.target_id = ? AND user_follows.user_id = users.id", userId).
+			Offset(offset).
+			Limit(limit).
+			Find(&followerNames).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	return &followerNames, err
 }
 
-func (d *DB) GetFollowings(username string, offset int, limit int) (*[]string, error) {
-	userId, err := d.GetUserIdByName(username)
-	if err != nil {
-		return nil, err
-	}
-
+func (d *DB) GetFollowings(userUUID *binaryuuid.UUID, offset int, limit int) (*[]string, error) {
 	followingNames := []string{}
-	if err := d.DB.
-		Model(&model.User{}).
-		Select("users.username").
-		Joins("JOIN user_follows ON user_follows.user_id = ? AND user_follows.target_id = users.id", userId).
-		Offset(offset).
-		Limit(limit).
-		Find(&followingNames).Error; err != nil {
-		return nil, err
-	}
-	return &followingNames, nil
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		userId, err := getUserIdByUUID(tx, userUUID)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.
+			Model(&model.User{}).
+			Select("users.username").
+			Joins("JOIN user_follows ON user_follows.user_id = ? AND user_follows.target_id = users.id", userId).
+			Offset(offset).
+			Limit(limit).
+			Find(&followingNames).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	return &followingNames, err
 }
 
-func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error {
-	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
-	if err != nil {
-		return err
-	}
-
+func (d *DB) AcceptRequestFollow(claimer *claimer.Claimer, code *binaryuuid.UUID) error {
 	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 		followRequest := &model.UserFollowRequest{}
-		if err := d.DB.
+		if err := tx.
 			Select("id", "user_id", "target_id").
 			Where("unique_code = ?", code).
 			First(followRequest).Error; err != nil {
@@ -194,12 +214,12 @@ func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.
 			return ErrInvalidPermission
 		}
 
-		if err := d.DB.
+		if err := tx.
 			Delete(&model.UserFollowRequest{}, followRequest.Id).Error; err != nil {
 			return err
 		}
 
-		err := d.followUser(followRequest.UserId, followRequest.TargetId)
+		err = followUser(tx, followRequest.UserId, followRequest.TargetId)
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil
 		}
@@ -207,15 +227,14 @@ func (d *DB) AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.
 	})
 }
 
-func (d *DB) RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error {
-	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
-	if err != nil {
-		return err
-	}
-
-	d.DB.Transaction(func(tx *gorm.DB) error {
+func (d *DB) RejectRequestFollow(claimer *claimer.Claimer, code *binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 		followRequest := &model.UserFollowRequest{}
-		if err := d.DB.
+		if err := tx.
 			Select("id", "user_id", "target_id").
 			Where("unique_code = ?", code).
 			First(followRequest).Error; err != nil {
@@ -225,47 +244,50 @@ func (d *DB) RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.
 		if claimerId != followRequest.TargetId {
 			return ErrInvalidPermission
 		}
-		return d.DB.Delete(&model.UserFollowRequest{}, followRequest.Id).Error
+		return tx.Delete(&model.UserFollowRequest{}, followRequest.Id).Error
 	})
-	return nil
 }
 
-func (d *DB) RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error {
-	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
-	if err != nil {
-		return err
-	}
+func (d *DB) RemoveFollower(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 
-	targetId, err := d.GetUserIdByName(targetname)
-	if err != nil {
-		return err
-	}
+		targetId, err := getUserIdByUUID(tx, targetUUID)
+		if err != nil {
+			return err
+		}
 
-	result := d.DB.
-		Where("user_id = ? AND target_id = ?", targetId, claimerId).
-		Delete(&model.UserFollow{})
-	if result.RowsAffected < 1 {
-		return ErrNoAffectedRow
-	}
-	return result.Error
+		result := tx.
+			Where("user_id = ? AND target_id = ?", targetId, claimerId).
+			Delete(&model.UserFollow{})
+		if result.RowsAffected < 1 {
+			return ErrNoAffectedRow
+		}
+		return result.Error
+	})
 }
 
-func (d *DB) RemoveFollowing(claimerUUID *binaryuuid.UUID, targetname string) error {
-	claimerId, err := d.GetUserIdByUUID(*claimerUUID)
-	if err != nil {
-		return err
-	}
+func (d *DB) RemoveFollowing(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 
-	targetId, err := d.GetUserIdByName(targetname)
-	if err != nil {
-		return err
-	}
+		targetId, err := getUserIdByUUID(tx, targetUUID)
+		if err != nil {
+			return err
+		}
 
-	result := d.DB.
-		Where("user_id = ? AND target_id = ?", claimerId, targetId).
-		Delete(&model.UserFollow{})
-	if result.RowsAffected < 1 {
-		return ErrNoAffectedRow
-	}
-	return result.Error
+		result := tx.
+			Where("user_id = ? AND target_id = ?", claimerId, targetId).
+			Delete(&model.UserFollow{})
+		if result.RowsAffected < 1 {
+			return ErrNoAffectedRow
+		}
+		return result.Error
+	})
 }

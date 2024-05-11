@@ -5,22 +5,21 @@ import (
 
 	"github.com/capdale/was/api"
 	articleAPI "github.com/capdale/was/api/article"
-	"github.com/capdale/was/auth"
 	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-gonic/gin"
 )
 
 var logger = baseLogger.Logger
 
 type database interface {
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (uint64, error)
-	CreateReportUser(issuerId uint64, targetUsername string, detailType int, description string) error
-	CreateReportArticle(issuerId uint64, targetarticleUUID binaryuuid.UUID, detailType int, description string) error
-	CreateReportBug(issuerId uint64, title string, description string) error
-	CreateReportHelp(issuerId uint64, title string, description string) error
-	CreateReportEtc(issuerIdu uint64, title string, description string) error
+	CreateReportUser(issuerUUID *claimer.Claimer, targetUUID *binaryuuid.UUID, detailType int, description string) error
+	CreateReportArticle(issuerUUID *claimer.Claimer, targetarticleUUID *binaryuuid.UUID, detailType int, description string) error
+	CreateReportBug(issuerUUID *claimer.Claimer, title string, description string) error
+	CreateReportHelp(issuerUUID *claimer.Claimer, title string, description string) error
+	CreateReportEtc(issuerUUID *claimer.Claimer, title string, description string) error
 }
 
 type ReportAPI struct {
@@ -35,7 +34,7 @@ func New(d database) *ReportAPI {
 
 type postReportUserForm struct {
 	ReportDetailType *int    `json:"report_detail_type" binding:"required"`
-	TargetUsername   *string `json:"username" binding:"required"`
+	TargetUUID       *string `json:"target" binding:"required,uuid"`
 	Description      string  `json:"description"`
 }
 
@@ -55,20 +54,9 @@ func (r *ReportAPI) PostUserReportHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
-	claimsPtr, isExist := ctx.Get("claims")
-	if isExist {
-		var err error
-		claims := claimsPtr.(*auth.AuthClaims)
-		issuerId, err = r.d.GetUserIdByUUID(claims.UUID)
-		if err != nil {
-			api.BasicInternalServerError(ctx)
-			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
-			return
-		}
-	}
-
-	if err := r.d.CreateReportUser(issuerId, *form.TargetUsername, *form.ReportDetailType, form.Description); err != nil {
+	issuerUUID := api.GetClaimer(ctx)
+	targetUUID := binaryuuid.MustParse(*form.TargetUUID)
+	if err := r.d.CreateReportUser(issuerUUID, &targetUUID, *form.ReportDetailType, form.Description); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create report user", err)
 		return
@@ -105,20 +93,8 @@ func (r *ReportAPI) PostReportArticleHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
-	claimsPtr, isExist := ctx.Get("claims")
-	if isExist {
-		var err error
-		claims := claimsPtr.(*auth.AuthClaims)
-		issuerId, err = r.d.GetUserIdByUUID(claims.UUID)
-		if err != nil {
-			api.BasicInternalServerError(ctx)
-			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
-			return
-		}
-	}
-
-	if err := r.d.CreateReportArticle(issuerId, *articleUUID, *form.ReportDetailType, form.Description); err != nil {
+	issuerUUID := api.GetClaimer(ctx)
+	if err := r.d.CreateReportArticle(issuerUUID, articleUUID, *form.ReportDetailType, form.Description); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create report article", err)
 		return
@@ -141,20 +117,8 @@ func (r *ReportAPI) PostReportBugHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
-	claimsPtr, isExist := ctx.Get("claims")
-	if isExist {
-		var err error
-		claims := claimsPtr.(*auth.AuthClaims)
-		issuerId, err = r.d.GetUserIdByUUID(claims.UUID)
-		if err != nil {
-			api.BasicInternalServerError(ctx)
-			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
-			return
-		}
-	}
-
-	if err := r.d.CreateReportBug(issuerId, *form.Title, *form.Description); err != nil {
+	issuerUUID := api.GetClaimer(ctx)
+	if err := r.d.CreateReportBug(issuerUUID, *form.Title, *form.Description); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "creat report bug", err)
 	}
@@ -177,19 +141,8 @@ func (r *ReportAPI) PostReportHelpHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
-	claimsPtr, isExist := ctx.Get("claims")
-	if isExist {
-		claims := claimsPtr.(*auth.AuthClaims)
-		issuerId, err = r.d.GetUserIdByUUID(claims.UUID)
-		if err != nil {
-			api.BasicInternalServerError(ctx)
-			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
-			return
-		}
-	}
-
-	if err = r.d.CreateReportHelp(issuerId, *form.Title, *form.Description); err != nil {
+	issuerUUID := api.GetClaimer(ctx)
+	if err = r.d.CreateReportHelp(issuerUUID, *form.Title, *form.Description); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create report help", err)
 		return
@@ -213,19 +166,8 @@ func (r *ReportAPI) PostReportEtcHandler(ctx *gin.Context) {
 	}
 	// validate form end
 
-	var issuerId uint64 = 0 // defulat issuer is -1 = anonymous
-	claimsPtr, isExist := ctx.Get("claims")
-	if isExist {
-		claims := claimsPtr.(*auth.AuthClaims)
-		issuerId, err = r.d.GetUserIdByUUID(claims.UUID)
-		if err != nil {
-			api.BasicInternalServerError(ctx)
-			logger.ErrorWithCTX(ctx, "exchange id - uuid", err)
-			return
-		}
-	}
-
-	if err = r.d.CreateReportEtc(issuerId, *form.Title, *form.Description); err != nil {
+	issuerUUID := api.GetClaimer(ctx)
+	if err = r.d.CreateReportEtc(issuerUUID, *form.Title, *form.Description); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create report etc", err)
 		return
