@@ -15,8 +15,17 @@ var (
 )
 
 func (d *DB) IsCollectionOwned(claimer *claimer.Claimer, collectionUUIDs *[]binaryuuid.UUID) error {
+	if claimer == nil {
+		return model.ErrAnonymousQuery
+	}
+
+	collectionLength := len(*collectionUUIDs)
+	if collectionLength < 0 {
+		return ErrInvalidInput
+	}
+
 	var count int64
-	querys := make([]uint64, len(*collectionUUIDs))
+	querys := make([]uint64, collectionLength)
 	return d.DB.Transaction(func(tx *gorm.DB) error {
 		userId, err := getUserIdByClaimer(tx, claimer)
 		if err != nil {
@@ -33,7 +42,7 @@ func (d *DB) IsCollectionOwned(claimer *claimer.Claimer, collectionUUIDs *[]bina
 			return err
 		}
 
-		if int(count) != len(*collectionUUIDs) {
+		if int(count) != collectionLength {
 			return ErrInvalidPermission
 		}
 		return nil
