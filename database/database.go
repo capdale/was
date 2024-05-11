@@ -9,24 +9,36 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type DB struct {
 	DB *gorm.DB
 }
 
-func New(databaseConfig *config.Database) (db *DB, err error) {
+func (d *DB) Close() (err error) {
+	sqlDB, err := d.DB.DB()
+	if err != nil {
+		return
+	}
+	err = sqlDB.Close()
+	return
+}
+
+func New(databaseConfig *config.Database, lvl logger.LogLevel) (db *DB, err error) {
 	if databaseConfig.SQLite != nil {
-		return NewSQLite(databaseConfig.SQLite)
+		return NewSQLite(databaseConfig.SQLite, lvl)
 	}
 	if databaseConfig.Mysql != nil {
-		return NewMySQL(databaseConfig.Mysql)
+		return NewMySQL(databaseConfig.Mysql, lvl)
 	}
 	return nil, config.ErrEmailConfig
 }
 
-func NewSQLite(sqliteConfig *config.SQLite) (db *DB, err error) {
-	d, err := gorm.Open(sqlite.Open(sqliteConfig.Path), &gorm.Config{})
+func NewSQLite(sqliteConfig *config.SQLite, lvl logger.LogLevel) (db *DB, err error) {
+	d, err := gorm.Open(sqlite.Open(sqliteConfig.Path), &gorm.Config{
+		Logger: logger.Default.LogMode(lvl),
+	})
 	if err != nil {
 		return
 	}
@@ -38,8 +50,7 @@ func NewSQLite(sqliteConfig *config.SQLite) (db *DB, err error) {
 	return
 }
 
-func NewMySQL(mysqlConfig *config.Mysql) (db *DB, err error) {
-
+func NewMySQL(mysqlConfig *config.Mysql, lvl logger.LogLevel) (db *DB, err error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/was?charset=utf8mb4&parseTime=True&loc=Local",
 		mysqlConfig.Username,
 		mysqlConfig.Password,
@@ -47,7 +58,9 @@ func NewMySQL(mysqlConfig *config.Mysql) (db *DB, err error) {
 		mysqlConfig.Port,
 	)
 
-	d, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	d, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(lvl),
+	})
 	if err != nil {
 		return
 	}
