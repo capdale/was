@@ -97,7 +97,7 @@ func (a *SocialAPI) GetFollowingsHandler(ctx *gin.Context) {
 }
 
 type requestFollowHandlerUri struct {
-	TargetUUID string `uri:"username" binding:"required, uuid"`
+	TargetUUID string `uri:"target" binding:"required, uuid"`
 }
 
 func (a *SocialAPI) RequestFollowHandler(ctx *gin.Context) {

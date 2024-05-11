@@ -119,9 +119,9 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 	collectRouter := r.Group("/collection")
 	{
-		collectRouter.GET("/", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectection)
+		collectRouter.GET("/list/:user", collectAPI.GetUserCollectections)
 		collectRouter.POST("/", auth.AuthorizeRequiredMiddleware(), collectAPI.CreateCollectionHandler)
-		collectRouter.GET("/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionByUUID)
+		collectRouter.GET("/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionHandler)
 		collectRouter.DELETE("/:uuid", auth.AuthorizeRequiredMiddleware(), collectAPI.DeleteCollectionHandler)
 		collectRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), collectAPI.GetCollectionImageHandler)
 	}
@@ -175,7 +175,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	articleRouter := r.Group("/article")
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
-		articleRouter.GET("/get-links/:username", articleAPI.GetUserArticleLinksHandler)
+		articleRouter.GET("/get-links/:uuid", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleHandler)
 		articleRouter.DELETE("/:link", auth.AuthorizeRequiredMiddleware(), articleAPI.DeleteArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
@@ -185,12 +185,12 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	socialRouter := r.Group("/social")
 	{
 		// TODO: auth for secret account
-		socialRouter.GET("/follower/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
-		socialRouter.GET("/following/:username", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
-		socialRouter.DELETE("/follower/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowerHandler)
-		socialRouter.DELETE("/following/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowingHandler)
+		socialRouter.GET("/follower/:target", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowersHandler)
+		socialRouter.GET("/following/:target", auth.AuthorizeOptionalMiddleware(), socialAPI.GetFollowingsHandler)
+		socialRouter.DELETE("/follower/:target", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowerHandler)
+		socialRouter.DELETE("/following/:target", auth.AuthorizeRequiredMiddleware(), socialAPI.DeleteFollowingHandler)
 		// request follow
-		socialRouter.POST("/follow/:username", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
+		socialRouter.POST("/follow/:target", auth.AuthorizeRequiredMiddleware(), socialAPI.RequestFollowHandler)
 		socialRouter.POST("/follow/accept/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.AcceptRequestFollowHandler)
 		socialRouter.POST("/follow/reject/:code", auth.AuthorizeRequiredMiddleware(), socialAPI.RejectRequestFollowHandler)
 	}
