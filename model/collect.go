@@ -18,6 +18,15 @@ type Collection struct {
 	DeletedAt       gorm.DeletedAt
 }
 
+func (a *Collection) BeforeCreate(tx *gorm.DB) error {
+	if a.UserId != nil {
+		if *a.UserId == 0 {
+			return ErrAnonymousCreate
+		}
+	}
+	return nil
+}
+
 type Geolocation struct {
 	Longtitude *float64 `json:"longtitude" binding:"required"`
 	Latitude   *float64 `json:"latitude" binding:"required"`

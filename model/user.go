@@ -23,12 +23,19 @@ type User struct {
 	CreatedAt       time.Time        `gorm:"autoCreateTime"`
 	UpdateAt        time.Time        `gorm:"autoUpdateTime"`
 	Collections     *[]Collection    `gorm:"foreignkey:UserId;references:Id;constraint:OnDelete:SET NULL;"`
-	OriginUser      OriginUser       `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
-	SocialUser      SocialUser       `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
+	OriginUser      *OriginUser      `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
+	SocialUser      *SocialUser      `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
 	UserDisplayType *UserDisplayType `gorm:"foreignKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
 	Tokens          *[]*Token        `gorm:"foreignKey:UserId;references:Id;constraint:OnUpdate:SET NULL,OnDelete:CASCADE"`
 	UserFollowers   *[]*UserFollow   `gorm:"foreginKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
 	UserFollowings  *[]*UserFollow   `gorm:"foreginKey:TargetId;references:Id;constraint:OnDelete:CASCADE"`
+}
+
+func (u *User) AfterCreate(tx *gorm.DB) error {
+	if u.Id == 0 {
+		return ErrAnonymousCreate
+	}
+	return nil
 }
 
 type OriginUser struct {
@@ -51,6 +58,13 @@ type Token struct {
 	NotBefore    time.Time       // jwt expired at, refresh token cannot be used before this, also used when make jwt token
 	ExpireAt     time.Time       // refresh token expired at, after can't refresh with this
 	CreatedAt    time.Time       `gorm:"autoCreateTime"`
+}
+
+func (t *Token) AfterCreate(tx *gorm.DB) error {
+	if t.UserId == 0 {
+		return ErrAnonymousCreate
+	}
+	return nil
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
@@ -89,9 +103,23 @@ type UserFollow struct {
 	TargetId uint64 `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
 }
 
+func (u *UserFollow) BeforeCreate(tx *gorm.DB) error {
+	if u.UserId == 0 || u.TargetId == 0 {
+		return ErrAnonymousCreate
+	}
+	return nil
+}
+
 type UserFollowRequest struct {
 	Id         uint64 `gorm:"primaryKey"`
 	UniqueCode byte   `gorm:"type:binary(64);index,unique"`
 	UserId     uint64 `gorm:"index:user_idx;uniqueIndex:user_target_idx"`
 	TargetId   uint64 `gorm:"index:target_idx;uniqueIndex:user_target_idx"`
+}
+
+func (u *UserFollowRequest) BeforeCreate(tx *gorm.DB) error {
+	if u.UserId == 0 || u.TargetId == 0 {
+		return ErrAnonymousCreate
+	}
+	return nil
 }

@@ -25,6 +25,9 @@ type Article struct {
 }
 
 func (a *Article) BeforeCreate(tx *gorm.DB) error {
+	if a.UserID == 0 {
+		return ErrAnonymousCreate
+	}
 	uid, err := uuid.NewRandom()
 	a.LinkUUID = binaryuuid.UUID(uid)
 	return err
