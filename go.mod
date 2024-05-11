@@ -4,8 +4,6 @@ replace github.com/capdale/was/ => ./
 
 go 1.21
 
-toolchain go1.22.2
-
 require (
 	github.com/gin-contrib/cors v1.7.1
 	github.com/gin-contrib/sessions v1.0.0
