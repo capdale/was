@@ -111,10 +111,9 @@ func (u *UserFollow) BeforeCreate(tx *gorm.DB) error {
 }
 
 type UserFollowRequest struct {
-	Id         uint64 `gorm:"primaryKey"`
-	UniqueCode byte   `gorm:"type:binary(64);index,unique"`
-	UserId     uint64 `gorm:"index:user_req_idx;uniqueIndex:user_req_target_idx"`
-	TargetId   uint64 `gorm:"index:target_req_idx;uniqueIndex:user_req_target_idx"`
+	Id       uint64 `gorm:"primaryKey"`
+	UserId   uint64 `gorm:"index:user_req_idx;uniqueIndex:user_req_target_idx"`
+	TargetId uint64 `gorm:"index:target_req_idx;uniqueIndex:user_req_target_idx"`
 }
 
 func (u *UserFollowRequest) BeforeCreate(tx *gorm.DB) error {
