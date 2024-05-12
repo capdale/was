@@ -184,6 +184,43 @@ func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
 	ctx.Status(http.StatusAccepted)
 }
 
+// duplicated, but remain (different function)
+type getRelationHandlerUri struct {
+	TargetUUID string `uri:"target" binding:"required,uuid"`
+}
+
+func (a *SocialAPI) GetRelationHandler(ctx *gin.Context) {
+	uri := &getRelationHandlerUri{}
+	if err := ctx.Bind(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+
+	// [TODO] integrate to database.GetRelationship for resource
+	isFollower, err := a.DB.IsFollower(claimer, &targetUUID)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "query follower", err)
+		return
+	}
+
+	isFollowing, err := a.DB.IsFollowing(claimer, &targetUUID)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "query follower", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &gin.H{
+		"following": isFollowing,
+		"follower":  isFollower,
+	})
+}
+
 type deleteFollowingUri = deleteFollowerUri
 
 func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
