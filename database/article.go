@@ -123,7 +123,7 @@ func hasPermissionArticle(tx *gorm.DB, claimer *claimer.Claimer, linkId *binaryu
 }
 
 func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error) {
-	if offset < 0 || limit < 1 || limit > 100 {
+	if offset < 0 || limit < 1 || limit > 64 {
 		return nil, ErrInvalidInput
 	}
 
