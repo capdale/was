@@ -79,7 +79,7 @@ func (d *DB) CreateCollection(claimer *claimer.Claimer, collection *model.Collec
 			CollectionIndex: *collection.CollectionIndex,
 			Geolocation:     collection.Geolocation,
 		}
-		return d.DB.Create(c).Error
+		return tx.Create(c).Error
 	})
 }
 
@@ -135,7 +135,7 @@ func (d *DB) DeleteCollection(claimer *claimer.Claimer, collectionUUID *binaryuu
 			return err
 		}
 
-		result := d.DB.
+		result := tx.
 			Where("user_id = ? AND uuid = ?", userId, collectionUUID).
 			Delete(&model.Collection{})
 		if result.Error != nil {
