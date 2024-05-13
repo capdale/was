@@ -15,8 +15,8 @@ import (
 var logger = baselogger.Logger
 
 type database interface {
-	GetFollowers(userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
-	GetFollowings(userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	GetFollowers(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	GetFollowings(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
 	RequestFollow(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error
 	IsFollower(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) (bool, error)
 	IsFollowing(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) (bool, error)
@@ -61,7 +61,8 @@ func (a *SocialAPI) GetFollowersHandler(ctx *gin.Context) {
 	}
 
 	userUUID := binaryuuid.MustParse(uri.Target)
-	followers, err := a.DB.GetFollowers(&userUUID, *form.Offset, *form.Limit)
+	claimer := api.GetClaimer(ctx)
+	followers, err := a.DB.GetFollowers(claimer, &userUUID, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get followers", err)
@@ -90,7 +91,8 @@ func (a *SocialAPI) GetFollowingsHandler(ctx *gin.Context) {
 	}
 
 	targetUUID := binaryuuid.MustParse(uri.Target)
-	followings, err := a.DB.GetFollowings(&targetUUID, *form.Offset, *form.Limit)
+	claimer := api.GetClaimer(ctx)
+	followings, err := a.DB.GetFollowings(claimer, &targetUUID, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get followings", err)

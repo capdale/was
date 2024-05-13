@@ -152,16 +152,30 @@ func (d *DB) IsFollowing(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) 
 	return
 }
 
-func (d *DB) GetFollowers(userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
+func (d *DB) GetFollowers(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
 	if offset < 0 || limit < 1 || limit > 64 {
 		return nil, ErrInvalidInput
 	}
 
 	followers := []*binaryuuid.UUID{}
 	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
 		userId, err := getUserIdByUUID(tx, userUUID)
 		if err != nil {
 			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, userId)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
 		}
 
 		if err := tx.
@@ -178,16 +192,30 @@ func (d *DB) GetFollowers(userUUID *binaryuuid.UUID, offset int, limit int) (*[]
 	return &followers, err
 }
 
-func (d *DB) GetFollowings(userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
+func (d *DB) GetFollowings(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
 	if offset < 0 || limit < 1 || limit > 64 {
 		return nil, ErrInvalidInput
 	}
 
 	followings := []*binaryuuid.UUID{}
 	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
 		userId, err := getUserIdByUUID(tx, userUUID)
 		if err != nil {
 			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, userId)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
 		}
 
 		if err := tx.
@@ -267,7 +295,7 @@ func (d *DB) GetFollowRequests(claimer *claimer.Claimer, offset int, limit int) 
 	}
 
 	requesters := make([]*binaryuuid.UUID, limit)
-	d.DB.Transaction(func(tx *gorm.DB) error {
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
 		claimerId, err := getUserIdByClaimer(tx, claimer)
 		if err != nil {
 			return err
@@ -275,21 +303,28 @@ func (d *DB) GetFollowRequests(claimer *claimer.Claimer, offset int, limit int) 
 
 		requesterIds := make([]uint64, limit)
 		if err := tx.
+			Model(&model.UserFollowRequest{}).
 			Select("user_id").
 			Where("target_id = ?", claimerId).
 			Find(&requesterIds).Error; err != nil {
 			return err
 		}
 
+		if len(requesterIds) == 0 {
+			return nil
+		}
+
 		if err := tx.
+			Debug().
+			Model(&model.User{}).
 			Select("uuid").
-			Where("id = ?", &requesterIds).
+			Where(&requesterIds).
 			Find(&requesters).Error; err != nil {
 			return err
 		}
 		return nil
 	})
-	return &requesters, nil
+	return &requesters, err
 }
 
 func (d *DB) RemoveFollower(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error {
