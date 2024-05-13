@@ -30,14 +30,14 @@ const (
 
 type ReportModel struct {
 	gorm.Model
-	IssuerId    int64 `gorm:"index"`
+	IssuerId    uint64 `gorm:"index"`
 	Description string
 }
 
 type ReportUser struct {
 	ReportModel
 	ReportDetailType int
-	TargetUserId     int64
+	TargetUserId     uint64
 }
 
 type ReportArticle struct {

@@ -7,7 +7,7 @@ import (
 	"github.com/capdale/was/api"
 	"github.com/capdale/was/auth"
 	baselogger "github.com/capdale/was/logger"
-	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ import (
 var logger = baselogger.Logger
 
 type database interface {
-	DeleteUserAccount(claimerUUID *binaryuuid.UUID) error
+	DeleteUserAccount(claimer *claimer.Claimer) error
 }
 
 type AuthAPI struct {
@@ -64,8 +64,8 @@ func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {
 }
 
 func (a *AuthAPI) DeleteUserAccountHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	if err := a.DB.DeleteUserAccount(&claims.UUID); err != nil {
+	claimer := api.MustGetClaimer(ctx)
+	if err := a.DB.DeleteUserAccount(claimer); err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "delete user account", err)
 		return
@@ -101,6 +101,4 @@ func (a *AuthAPI) RefreshTokenHandler(ctx *gin.Context) {
 }
 
 func (a *AuthAPI) WhoAmIHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	ctx.JSON(http.StatusOK, gin.H{"uuid": claims.UUID.String()})
 }

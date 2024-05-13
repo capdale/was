@@ -8,10 +8,11 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/capdale/was/auth"
+	"github.com/capdale/was/api"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,15 +24,12 @@ type storage interface {
 }
 
 type database interface {
-	IsCollectionOwned(userId int64, collectionUUIDs *[]binaryuuid.UUID) error
-	GetArticleLinkIdsByUserId(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error)
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
-	GetUserIdByName(username string) (int64, error)
-	GetArticle(claimerId int64, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
-	CreateNewArticle(userId int64, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
-	HasQueryPermission(claimerId int64, targetId int64) (bool, error)
-	HasAccessPermissionArticleImage(claimerId int64, articleImageUUID *binaryuuid.UUID) (bool, error)
-	DeleteArticle(claimerUUID *binaryuuid.UUID, articleLinkId *binaryuuid.UUID) error
+	IsCollectionOwned(claimer *claimer.Claimer, collectionUUIDs *[]binaryuuid.UUID) error
+	GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error)
+	GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
+	CreateNewArticle(claimer *claimer.Claimer, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
+	HasAccessPermissionArticleImage(claimer *claimer.Claimer, imageUUID *binaryuuid.UUID) (bool, error)
+	DeleteArticle(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUID) error
 }
 
 type ArticleAPI struct {
@@ -67,7 +65,6 @@ type collectionInfo struct {
 var ErrInvalidOrder = errors.New("invalid order")
 
 func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	form := &createArticleForm{}
 	if err := ctx.Bind(form); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid form"})
@@ -101,16 +98,12 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 		imageUUIDs[i] = buid
 	}
 
+	claimerAuthUUID := api.MustGetClaimer(ctx)
+
 	// no check uuids duplicated, since uuidv4 duplicate probability is very low, err when insert to DB with unique key
 
 	// check collection is owned
-	userId, err := a.d.GetUserIdByUUID(claims.UUID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
-		logger.ErrorWithCTX(ctx, "get userid by uuid", err)
-		return
-	}
-	if err = a.d.IsCollectionOwned(userId, &collectionUUIDs); err != nil {
+	if err := a.d.IsCollectionOwned(claimerAuthUUID, &collectionUUIDs); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "bad request"})
 		logger.ErrorWithCTX(ctx, "bad request", err)
 		return
@@ -123,7 +116,7 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	if err := a.d.CreateNewArticle(userId, form.Article.Title, form.Article.Content, &collectionUUIDs, &imageUUIDs, &orders); err != nil {
+	if err := a.d.CreateNewArticle(claimerAuthUUID, form.Article.Title, form.Article.Content, &collectionUUIDs, &imageUUIDs, &orders); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 		logger.ErrorWithCTX(ctx, "create new article", err)
 		return
@@ -133,7 +126,7 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 }
 
 type getArticleLinksUri struct {
-	Username string `uri:"username" binding:"required"`
+	TargetUUID string `uri:"uuid" binding:"required,uuid"`
 }
 
 type getArticleLinksForm struct {
@@ -154,14 +147,9 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 		return
 	}
 
-	userId, err := a.d.GetUserIdByName(uri.Username)
-	if err != nil {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "get userid by uuid", err)
-		return
-	}
-
-	articles, err := a.d.GetArticleLinkIdsByUserId(userId, form.Offset, form.Limit)
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimerAuthUUID := api.GetClaimer(ctx)
+	articles, err := a.d.GetArticleLinkIdsByUserUUID(claimerAuthUUID, &targetUUID, form.Offset, form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "query linkids by user id", err)
@@ -185,25 +173,8 @@ func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	claimsPtr, isExist := ctx.Get("claims")
-	var claimerUUID *binaryuuid.UUID
-	if isExist {
-		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
-	}
-
-	var claimerId int64 = -1
-
-	if isExist {
-		var err error
-		claimerId, err = a.d.GetUserIdByUUID(*claimerUUID)
-		if err != nil {
-			ctx.Status(http.StatusNotFound)
-			logger.ErrorWithCTX(ctx, "id by uuid", err)
-			return
-		}
-	}
-
-	article, err := a.d.GetArticle(claimerId, *linkId)
+	claimerAuthUUID := api.GetClaimer(ctx)
+	article, err := a.d.GetArticle(claimerAuthUUID, *linkId)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get article", err)
@@ -224,27 +195,9 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 		return
 	}
 
-	claimsPtr, isExist := ctx.Get("claims")
-	var claimerUUID *binaryuuid.UUID
-	if isExist {
-		claimerUUID = &(claimsPtr.(*auth.AuthClaims)).UUID
-	}
-
-	var claimerId int64 = -1
-
-	if isExist {
-		var err error
-		claimerId, err = a.d.GetUserIdByUUID(*claimerUUID)
-		if err != nil {
-			ctx.Status(http.StatusNotFound)
-			logger.ErrorWithCTX(ctx, "id by uuid", err)
-			return
-		}
-	}
-
 	imageUUID := binaryuuid.MustParse(uri.ImageUUID)
-
-	hasPermission, err := a.d.HasAccessPermissionArticleImage(claimerId, &imageUUID)
+	claimerAuthUUID := api.GetClaimer(ctx)
+	hasPermission, err := a.d.HasAccessPermissionArticleImage(claimerAuthUUID, &imageUUID)
 	if err != nil || !hasPermission {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "check permission", err)
@@ -279,8 +232,8 @@ func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	if err := a.d.DeleteArticle(&claims.UUID, articleId); err != nil {
+	claimerAuthUUID := api.MustGetClaimer(ctx)
+	if err := a.d.DeleteArticle(claimerAuthUUID, articleId); err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "delete article", err)
 		return

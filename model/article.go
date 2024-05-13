@@ -10,7 +10,7 @@ import (
 
 type Article struct {
 	Id                 uint64          `gorm:"primaryKey"`
-	UserID             int64           `gorm:"index;index:uid_link_uuid_idx,unique;not null"` // = UserId
+	UserID             uint64          `gorm:"index;index:uid_link_uuid_idx,unique;not null"` // = UserId
 	User               User            `gorm:"references:id"`
 	LinkUUID           binaryuuid.UUID `gorm:"index:uid_link_uuid_idx,unique;not null;"`
 	Title              string          `gorm:"type:varchar(32);not null"`
@@ -25,6 +25,9 @@ type Article struct {
 }
 
 func (a *Article) BeforeCreate(tx *gorm.DB) error {
+	if a.UserID == 0 {
+		return ErrAnonymousCreate
+	}
 	uid, err := uuid.NewRandom()
 	a.LinkUUID = binaryuuid.UUID(uid)
 	return err

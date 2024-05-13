@@ -9,12 +9,13 @@ import (
 
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthClaims struct {
-	UUID binaryuuid.UUID `json:"user"`
+type Token struct {
+	Claimer claimer.Claimer `json:"user"`
 	jwt.RegisteredClaims
 }
 
@@ -25,14 +26,14 @@ var (
 	ErrTokenNotExpiredYet = errors.New("token not expired yet")
 )
 
-func (a *AuthClaims) IsExpired() bool {
+func (a *Token) IsExpired() bool {
 	return a.ExpiresAt.Time.Before(time.Now())
 }
 
-func (a *Auth) IssueToken(userUUID binaryuuid.UUID, agent *string) (tokenString string, refreshTokenString string, err error) {
+func (a *Auth) IssueToken(claimer claimer.Claimer, agent *string) (tokenString string, refreshTokenString string, err error) {
 	// this function manage all secure process, store refresh token in db, validate token etc
 	expireAt := time.Now().Add(time.Minute * 30)
-	claims, err := a.generateClaim(userUUID, expireAt)
+	claims, err := a.generateClaim(&claimer, expireAt)
 	if err != nil {
 		return
 	}
@@ -47,13 +48,8 @@ func (a *Auth) IssueToken(userUUID binaryuuid.UUID, agent *string) (tokenString 
 		return
 	}
 
-	userId, err := a.DB.GetUserIdByUUID(userUUID)
-	if err != nil {
-		return
-	}
-
 	refreshTokenExpireAt := time.Now().Add(time.Hour * 24 * 7)
-	if err = a.DB.CreateRefreshToken(userId, refreshTokenUID, refreshToken, claims.ExpiresAt.Time, refreshTokenExpireAt, agent); err != nil {
+	if err = a.DB.CreateRefreshToken(claimer, refreshTokenUID, refreshToken, claims.ExpiresAt.Time, refreshTokenExpireAt, agent); err != nil {
 		return
 	}
 
@@ -63,9 +59,12 @@ func (a *Auth) IssueToken(userUUID binaryuuid.UUID, agent *string) (tokenString 
 	return
 }
 
-func (a *Auth) generateClaim(userUUID binaryuuid.UUID, expireAt time.Time) (c *AuthClaims, err error) {
-	c = &AuthClaims{
-		UUID: userUUID,
+func (a *Auth) generateClaim(claimer *claimer.Claimer, expireAt time.Time) (c *Token, err error) {
+	if claimer == nil {
+		return
+	}
+	c = &Token{
+		Claimer: *claimer,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expireAt),
 		},
@@ -73,7 +72,7 @@ func (a *Auth) generateClaim(userUUID binaryuuid.UUID, expireAt time.Time) (c *A
 	return
 }
 
-func (a *Auth) generateToken(claims *AuthClaims) (string, error) {
+func (a *Auth) generateToken(claims *Token) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString(a.secret)
 	if err != nil {
@@ -82,13 +81,13 @@ func (a *Auth) generateToken(claims *AuthClaims) (string, error) {
 	return signedToken[37:], nil
 }
 
-func (a *Auth) ParseToken(tokenString string) (claims *AuthClaims, err error) {
-	claims = &AuthClaims{}
-	_, err = jwt.ParseWithClaims("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+tokenString, claims, func(t *jwt.Token) (interface{}, error) { return a.secret, nil })
+func (a *Auth) ParseToken(tokenString string) (token *Token, err error) {
+	token = &Token{}
+	_, err = jwt.ParseWithClaims("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."+tokenString, token, func(t *jwt.Token) (interface{}, error) { return a.secret, nil })
 	return
 }
 
-func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
+func (a *Auth) ValidateToken(tokenString string) (*Token, error) {
 	claims, err := a.ParseToken(tokenString)
 	if err != nil {
 		return nil, err
@@ -103,7 +102,7 @@ func (a *Auth) ValidateToken(tokenString string) (*AuthClaims, error) {
 	return claims, nil
 }
 
-func (a *Auth) ParseTokenIgnoreExpired(tokenString *string) (*AuthClaims, error) {
+func (a *Auth) ParseTokenIgnoreExpired(tokenString *string) (*Token, error) {
 	claims, err := a.ParseToken(*tokenString)
 	if err != nil {
 		if errors.Is(jwt.ErrTokenExpired, err) && !errors.Is(jwt.ErrTokenMalformed, err) {
@@ -146,12 +145,12 @@ func (a *Auth) RefreshToken(refreshTokenString string, agent *string) (newTokenS
 		return
 	}
 
-	user, err := a.DB.GetUserById(refreshToken.UserId)
+	claimer, err := a.DB.GetUserClaimByID(refreshToken.UserId)
 	if err != nil {
 		return
 	}
 
-	newTokenString, newRefreshTokenString, err = a.IssueToken(user.UUID, agent)
+	newTokenString, newRefreshTokenString, err = a.IssueToken(*claimer, agent)
 	return
 }
 

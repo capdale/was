@@ -6,6 +6,7 @@ import (
 
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -16,29 +17,21 @@ var (
 	ErrEmailAlreadyUsed = errors.New("email already used")
 )
 
-func (d *DB) ExchangeIDs2Names(ids *[]int64) (*[]string, error) {
-	names := make([]string, len(*ids))
-	result := d.DB.
-		Model(&model.User{}).
-		Select("username").
-		Where("id = ?", *ids).
-		Find(&names)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	if result.RowsAffected != int64(len(*ids)) {
-		return nil, ErrInvalidInput
-	}
-	return &names, nil
-}
-
-func (d *DB) GetUserById(userId int64) (*model.User, error) {
-	user := &model.User{}
-	err := d.DB.
-		Where("id = ?", userId).
-		First(user).Error
-	return user, err
-}
+// func (d *DB) ExchangeIDs2Names(ids *[]uint64) (*[]string, error) {
+// 	names := make([]string, len(*ids))
+// 	result := d.DB.
+// 		Model(&model.User{}).
+// 		Select("username").
+// 		Where("id = ?", *ids).
+// 		Find(&names)
+// 	if result.Error != nil {
+// 		return nil, result.Error
+// 	}
+// 	if result.RowsAffected != int64(len(*ids)) {
+// 		return nil, ErrInvalidInput
+// 	}
+// 	return &names, nil
+// }
 
 func (d *DB) GetUserByEmail(email string) (user *model.User, err error) {
 	user = &model.User{}
@@ -53,7 +46,7 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 		Username:    username,
 		Email:       email,
 		AccountType: model.AccountTypeGithub,
-		SocialUser: model.SocialUser{
+		SocialUser: &model.SocialUser{
 			AccountType: model.AccountTypeGithub,
 		},
 		UserDisplayType: &model.UserDisplayType{
@@ -64,26 +57,20 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 	return user, err
 }
 
-func (d *DB) GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error) {
-	user := &model.User{}
-	if err := d.DB.
+func getUserIdByUUID(tx *gorm.DB, userUUID *binaryuuid.UUID) (uint64, error) {
+	if userUUID == nil {
+		return 0, nil
+	}
+
+	var userId uint64
+	if err := tx.
+		Model(&model.User{}).
 		Select("id").
 		Where("uuid = ?", userUUID).
-		First(user).Error; err != nil {
+		First(&userId).Error; err != nil {
 		return 0, err
 	}
-	return user.Id, nil
-}
-
-func (d *DB) GetUserIdByName(username string) (int64, error) {
-	user := &model.User{}
-	if err := d.DB.
-		Select("id").
-		Where("username = ?", username).
-		First(user).Error; err != nil {
-		return 0, err
-	}
-	return user.Id, nil
+	return userId, nil
 }
 
 func (d *DB) IsEmailUsed(email string) (bool, error) {
@@ -99,6 +86,7 @@ func (d *DB) IsEmailUsed(email string) (bool, error) {
 }
 
 func (d *DB) CreateTicketByEmail(email string) (*binaryuuid.UUID, error) {
+	// no transaction needed, if email duplicated, create account fail
 	emailUsed, err := d.IsEmailUsed(email)
 	if err != nil {
 		return nil, err
@@ -116,13 +104,13 @@ func (d *DB) CreateTicketByEmail(email string) (*binaryuuid.UUID, error) {
 	return &ticket.UUID, nil
 }
 
-func (d *DB) RemoveTicket(ticketUUID binaryuuid.UUID) error {
+func (d *DB) RemoveTicket(ticketUUID *binaryuuid.UUID) error {
 	return d.DB.
 		Where("uuid = ?", ticketUUID).
 		Delete(&model.Ticket{}).Error
 }
 
-func (d *DB) IsTicketAvailable(ticketUUID binaryuuid.UUID) (bool, error) {
+func (d *DB) IsTicketAvailable(ticketUUID *binaryuuid.UUID) (bool, error) {
 	_, err := d.GetTicket(ticketUUID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound || err == ErrTicketExpired {
@@ -133,7 +121,7 @@ func (d *DB) IsTicketAvailable(ticketUUID binaryuuid.UUID) (bool, error) {
 	return true, nil
 }
 
-func (d *DB) GetTicket(ticketUUID binaryuuid.UUID) (*model.Ticket, error) {
+func (d *DB) GetTicket(ticketUUID *binaryuuid.UUID) (*model.Ticket, error) {
 	ticket := &model.Ticket{}
 	if err := d.DB.
 		Where("uuid = ?", ticketUUID).
@@ -149,14 +137,14 @@ func (d *DB) GetTicket(ticketUUID binaryuuid.UUID) (*model.Ticket, error) {
 }
 
 func (d *DB) GetEmailByTicket(ticketUUID *binaryuuid.UUID) (string, error) {
-	ticket, err := d.GetTicket(*ticketUUID)
+	ticket, err := d.GetTicket(ticketUUID)
 	if err != nil {
 		return "", err
 	}
 	return ticket.Email, nil
 }
 
-func (d *DB) CreateOriginViaTicket(ticketUUID binaryuuid.UUID, username string, password string) error {
+func (d *DB) CreateOriginViaTicket(ticketUUID *binaryuuid.UUID, username string, password string) error {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -183,7 +171,7 @@ func (d *DB) CreateOriginViaTicket(ticketUUID binaryuuid.UUID, username string, 
 			Username:    username,
 			Email:       ticket.Email,
 			AccountType: model.AccountTypeOrigin,
-			OriginUser: model.OriginUser{
+			OriginUser: &model.OriginUser{
 				Hashed: hashed,
 			},
 			UserDisplayType: &model.UserDisplayType{
@@ -193,25 +181,27 @@ func (d *DB) CreateOriginViaTicket(ticketUUID binaryuuid.UUID, username string, 
 	})
 }
 
-type useruuidNhashed struct {
-	UUID   binaryuuid.UUID
-	Hashed []byte
+type userClaimdNhashed struct {
+	UUID     binaryuuid.UUID
+	AuthUUID binaryuuid.UUID
+	Hashed   []byte
 }
 
-func (d *DB) GetOriginUserUUID(username string, password string) (*binaryuuid.UUID, error) {
-	user := &useruuidNhashed{}
+func (d *DB) GetOriginUserClaimerAndUUID(username string, password string) (*claimer.Claimer, *binaryuuid.UUID, error) {
+	user := &userClaimdNhashed{}
 	if err := d.DB.
 		Model(&model.User{}).
-		Select("users.uuid", "origin_users.hashed").
+		Select("users.uuid", "users.auth_uuid", "origin_users.hashed").
 		Joins("INNER JOIN origin_users ON origin_users.id = users.id").
 		Where("username = ? AND account_type = ?", username, model.AccountTypeOrigin).
 		First(user).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := bcrypt.CompareHashAndPassword(user.Hashed, []byte(password)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &user.UUID, nil
+	claimer := claimer.New(&user.AuthUUID)
+	return claimer, &user.UUID, nil
 }
 
 const (
@@ -227,18 +217,16 @@ func (d *DB) UserVisibilityPrivate() int {
 	return userVisibilityPrivate
 }
 
-func (d *DB) ChangeVisibility(claimerUUID *binaryuuid.UUID, visibilityType int) error {
+func (d *DB) ChangeVisibility(claimer *claimer.Claimer, visibilityType int) error {
 	return d.DB.Transaction(func(tx *gorm.DB) error {
-		var userId int64
-		if err := tx.
-			Model(&model.User{}).
-			Select("id").Where("uuid = ?", claimerUUID).
-			First(&userId).Error; err != nil {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
 			return err
 		}
+
 		if err := tx.
 			Model(&model.UserDisplayType{}).
-			Where("user_id = ?", userId).
+			Where("user_id = ?", claimerId).
 			Update("is_private", visibilityType == userVisibilityPrivate).Error; err != nil {
 			return err
 		}

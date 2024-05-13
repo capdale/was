@@ -5,14 +5,14 @@ import (
 
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 )
 
 type database interface {
-	CreateRefreshToken(userId int64, tokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expireAt time.Time, agent *string) error
-	IsTokenPair(userId int64, tokenExpiredAt time.Time, refreshToken *[]byte) error
+	CreateRefreshToken(claimer claimer.Claimer, tokenUID *binaryuuid.UUID, refreshToken *[]byte, notBefore time.Time, expireAt time.Time, agent *string) error
+	IsTokenPair(claimer claimer.Claimer, tokenExpiredAt time.Time, refreshToken *[]byte) error
 	PopRefreshToken(refreshTokenUID *binaryuuid.UUID) (*model.Token, error)
-	GetUserById(userId int64) (user *model.User, err error)
-	GetUserIdByUUID(userUUID binaryuuid.UUID) (int64, error)
+	GetUserClaimByID(claimerId uint64) (*claimer.Claimer, error)
 }
 
 type store interface {

@@ -1,5 +1,5 @@
 service:
-  address: ":8080"
+  address: "localhost:8080"
   cors:
     allowOrigins:
       - "*"
@@ -24,11 +24,18 @@ service:
     maxAge: 30
     console: true
 
-mysql:
-  username: root
-  password: password
-  address: localhost
-  port: 3306
+database:
+  # sqlite:
+  # path: tmp/sqlite.db
+
+  mysql:
+    username: root
+    password: password
+    address: localhost
+    port: 3306
+    maxIdleConns: 10
+    maxOpenConns: 100
+    maxLifetime: 180
 
 redis:
   address: localhost:6379
@@ -46,12 +53,20 @@ oauth:
     redirect: "redirect url"
 
 email:
+  # mock: # mock option is priority
+  # type: "default"
   ses:
     region: "region"
-    domain: "basedomain"
-    id: "id"
-    key: "key"
+    domain: "base domain"
+    id: "id" # optional
+    key: "key" # optional
 
 storage:
-  local:
-    baseDirectory: "base directory path"
+  # local:
+  #   baseDirectory: ""
+
+  s3:
+    region: "region"
+    bucketName: "name"
+    id: "id" # optional
+  #   key: "key" # optional

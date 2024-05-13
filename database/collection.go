@@ -3,58 +3,84 @@ package database
 import (
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
+	"gorm.io/gorm"
 )
 
-func (d *DB) GetCollectionUUIDs(userId int64, offset int, limit int) (*[]binaryuuid.UUID, error) {
+func (d *DB) GetUserCollectionUUIDs(targetUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error) {
 	collections := []model.Collection{}
-	err := d.DB.
-		Select("uuid").
-		Where("user_id = ?", userId).
-		Offset(offset).
-		Limit(limit).
-		Find(&collections).Error
+	if err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByUUID(tx, targetUUID)
+		if err != nil {
+			return err
+		}
+		return tx.
+			Model(&model.Collection{}).
+			Select("uuid").
+			Where("user_id = ?", claimerId).
+			Offset(offset).
+			Limit(limit).
+			Find(&collections).Error
+	}); err != nil {
+		return nil, err
+	}
+
 	uuids := make([]binaryuuid.UUID, len(collections))
 	for i, collection := range collections {
 		uuids[i] = binaryuuid.UUID(collection.UUID)
 	}
-	return &uuids, err
+	return &uuids, nil
 }
 
-func (d *DB) GetCollectionByUUID(claimerId int64, collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
-	collection = &model.CollectionAPI{}
-	if err = d.DB.
-		Model(&model.Collection{}).
-		Where("uuid = ?", collectionUUID).
-		First(collection).Error; err != nil {
-		return
-	}
+func (d *DB) GetCollectionByUUID(claimer *claimer.Claimer, collectionUUID *binaryuuid.UUID) (collection *model.CollectionAPI, err error) {
+	d.DB.Transaction(func(tx *gorm.DB) error {
+		var err error
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 
-	if collection.UserId == nil {
-		err = ErrNoAffectedRow
-		return
-	}
+		collection = &model.CollectionAPI{}
+		if err = tx.
+			Model(&model.Collection{}).
+			Where("uuid = ?", collectionUUID).
+			First(collection).Error; err != nil {
+			return err
+		}
 
-	allowed, err := d.HasQueryPermission(claimerId, *collection.UserId)
-	if err != nil {
-		return
-	}
+		if collection.UserId == nil {
+			return ErrNoAffectedRow
+		}
 
-	if !allowed {
-		err = ErrInvalidPermission
-		return
-	}
+		allowed, err := hasQueryPermission(tx, claimerId, *collection.UserId)
+		if err != nil {
+			return err
+		}
+
+		if !allowed {
+			return ErrInvalidPermission
+		}
+		return nil
+	})
+
 	return
 }
 
-func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, collectionUUID binaryuuid.UUID) error {
-	c := &model.Collection{
-		UserId:          &userId,
-		UUID:            collectionUUID,
-		CollectionIndex: *collection.CollectionIndex,
-		Geolocation:     collection.Geolocation,
-	}
-	err := d.DB.Create(c).Error
-	return err
+func (d *DB) CreateCollection(claimer *claimer.Claimer, collection *model.CollectionAPI, collectionUUID binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		c := &model.Collection{
+			UserId:          &claimerId,
+			UUID:            collectionUUID,
+			CollectionIndex: *collection.CollectionIndex,
+			Geolocation:     collection.Geolocation,
+		}
+		return d.DB.Create(c).Error
+	})
 }
 
 // func (d *DB) GetCollectionIdsByUUIDs(userId int64, collectionUUIDs *[]uuid.UUID) (*[]uint64, error) {
@@ -73,41 +99,52 @@ func (d *DB) CreateCollection(userId int64, collection *model.CollectionAPI, col
 
 // TODO: if claimerUUID is nil, retrieve as public
 // if collection is user owned return nil
-func (d *DB) HasAccessPermissionCollection(claimerId int64, collectionUUID binaryuuid.UUID) error {
-	var ownerId int64
-	if err := d.DB.
-		Model(&model.Collection{}).
-		Select("user_id").
-		Where("uuid = ?", collectionUUID).
-		First(&ownerId).Error; err != nil {
-		return err
-	}
+func (d *DB) HasAccessPermissionCollection(claimer *claimer.Claimer, collectionUUID binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		var ownerId uint64
+		if err := tx.
+			Model(&model.Collection{}).
+			Select("user_id").
+			Where("uuid = ?", collectionUUID).
+			First(&ownerId).Error; err != nil {
+			return err
+		}
 
-	allowed, err := d.HasQueryPermission(claimerId, ownerId)
-	if err != nil {
-		return err
-	}
-	if !allowed {
-		return ErrInvalidPermission
-	}
-	return nil
+		// claimer UUID has a high probability of query success being guaranteed, so query after collection query
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		allowed, err := hasQueryPermission(tx, claimerId, ownerId)
+		if err != nil {
+			return err
+		}
+
+		if !allowed {
+			return ErrInvalidPermission
+		}
+		return nil
+	})
 }
 
-func (d *DB) DeleteCollection(userUUID *binaryuuid.UUID, collectionUUID *binaryuuid.UUID) error {
-	userId, err := d.GetUserIdByUUID(*userUUID)
-	if err != nil {
-		return err
-	}
+func (d *DB) DeleteCollection(claimer *claimer.Claimer, collectionUUID *binaryuuid.UUID) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		userId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
 
-	result := d.DB.
-		Where("user_id = ? AND uuid = ?", userId, collectionUUID).
-		Delete(&model.Collection{})
-	if result.Error != nil {
-		return result.Error
-	}
+		result := d.DB.
+			Where("user_id = ? AND uuid = ?", userId, collectionUUID).
+			Delete(&model.Collection{})
+		if result.Error != nil {
+			return result.Error
+		}
 
-	if result.RowsAffected < 1 {
-		return ErrNoAffectedRow
-	}
-	return nil
+		if result.RowsAffected < 1 {
+			return ErrNoAffectedRow
+		}
+		return nil
+	})
 }

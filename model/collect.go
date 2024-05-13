@@ -9,13 +9,22 @@ import (
 
 type Collection struct {
 	Id              uint64          `gorm:"primaryKey"`
-	UserId          *int64          `gorm:"index:id"`
+	UserId          *uint64         `gorm:"index:id"`
 	UUID            binaryuuid.UUID `gorm:"uniqueIndex:uuid;not null"`
 	CollectionIndex int64           `gorm:"not null"`
 	Geolocation     Geolocation     `gorm:"embedded;not null"`
 	Accuracy        float64         `gorm:"not null"`
 	OriginAt        time.Time       `gorm:"autoCreateTime"`
 	DeletedAt       gorm.DeletedAt
+}
+
+func (a *Collection) BeforeCreate(tx *gorm.DB) error {
+	if a.UserId != nil {
+		if *a.UserId == 0 {
+			return ErrAnonymousCreate
+		}
+	}
+	return nil
 }
 
 type Geolocation struct {
@@ -30,7 +39,7 @@ type CollectionUID struct {
 }
 
 type CollectionAPI struct {
-	UserId          *int64      `json:"-"`
+	UserId          *uint64     `json:"-"`
 	CollectionIndex *int64      `json:"index" binding:"required"`
 	Geolocation     Geolocation `json:"geolocation" gorm:"embedded"`
 	OriginAt        *time.Time  `json:"datetime,omitempty"`

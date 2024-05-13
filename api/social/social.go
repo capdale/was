@@ -4,25 +4,27 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/capdale/was/auth"
+	"github.com/capdale/was/api"
 	baselogger "github.com/capdale/was/logger"
 
 	"github.com/capdale/was/types/binaryuuid"
+	"github.com/capdale/was/types/claimer"
 	"github.com/gin-gonic/gin"
 )
 
 var logger = baselogger.Logger
 
 type database interface {
-	GetFollowers(username string, offset int, limit int) (*[]string, error)
-	GetFollowings(username string, offset int, limit int) (*[]string, error)
-	RequestFollow(claimer binaryuuid.UUID, targetname string) error
-	IsFollower(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
-	IsFollowing(claimerUUID binaryuuid.UUID, targetname string) (bool, error)
-	AcceptRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
-	RejectRequestFollow(claimerUUID *binaryuuid.UUID, code *binaryuuid.UUID) error
-	RemoveFollower(claimerUUID *binaryuuid.UUID, targetname string) error
-	RemoveFollowing(claimerUUID *binaryuuid.UUID, targetname string) error
+	GetFollowers(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	GetFollowings(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	RequestFollow(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error
+	IsFollower(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) (bool, error)
+	IsFollowing(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) (bool, error)
+	AcceptRequestFollow(claimer *claimer.Claimer, code *binaryuuid.UUID) error
+	RejectRequestFollow(claimer *claimer.Claimer, code *binaryuuid.UUID) error
+	GetFollowRequests(claimer *claimer.Claimer, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	RemoveFollower(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error
+	RemoveFollowing(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID) error
 }
 
 type SocialAPI struct {
@@ -36,7 +38,7 @@ func New(database database) *SocialAPI {
 }
 
 type getFollowersHandlerUri struct {
-	Name string `uri:"username" binding:"required"`
+	Target string `uri:"target" binding:"required,uuid"`
 }
 
 type getFollowersHandlerForm struct {
@@ -58,13 +60,17 @@ func (a *SocialAPI) GetFollowersHandler(ctx *gin.Context) {
 		return
 	}
 
-	followernames, err := a.DB.GetFollowers(uri.Name, *form.Offset, *form.Limit)
+	userUUID := binaryuuid.MustParse(uri.Target)
+	claimer := api.GetClaimer(ctx)
+	followers, err := a.DB.GetFollowers(claimer, &userUUID, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get followers", err)
 		return
 	}
-	ctx.JSON(http.StatusOK, followernames)
+	ctx.JSON(http.StatusOK, &gin.H{
+		"followers": followers,
+	})
 }
 
 type getFollowingsHandlerUri = getFollowersHandlerUri
@@ -84,17 +90,21 @@ func (a *SocialAPI) GetFollowingsHandler(ctx *gin.Context) {
 		return
 	}
 
-	followingnames, err := a.DB.GetFollowings(uri.Name, *form.Offset, *form.Limit)
+	targetUUID := binaryuuid.MustParse(uri.Target)
+	claimer := api.GetClaimer(ctx)
+	followings, err := a.DB.GetFollowings(claimer, &targetUUID, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get followings", err)
 		return
 	}
-	ctx.JSON(http.StatusOK, followingnames)
+	ctx.JSON(http.StatusOK, &gin.H{
+		"followings": followings,
+	})
 }
 
 type requestFollowHandlerUri struct {
-	Targetname string `uri:"username" binding:"required"`
+	TargetUUID string `uri:"target" binding:"required, uuid"`
 }
 
 func (a *SocialAPI) RequestFollowHandler(ctx *gin.Context) {
@@ -105,9 +115,9 @@ func (a *SocialAPI) RequestFollowHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-
-	if err := a.DB.RequestFollow(claims.UUID, uri.Targetname); err != nil {
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+	if err := a.DB.RequestFollow(claimer, &targetUUID); err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "request follow", err)
 		return
@@ -116,11 +126,10 @@ func (a *SocialAPI) RequestFollowHandler(ctx *gin.Context) {
 }
 
 type getFollowerRelationHandlerUri struct {
-	TargetName string `uri:"username" binding:"required"`
+	TargetUUID string `uri:"target" binding:"required,uuid"`
 }
 
 func (a *SocialAPI) GetFollowerRelationHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	uri := &getFollowerRelationHandlerUri{}
 	if err := ctx.Bind(uri); err != nil {
 		ctx.Status(http.StatusBadRequest)
@@ -128,7 +137,10 @@ func (a *SocialAPI) GetFollowerRelationHandler(ctx *gin.Context) {
 		return
 	}
 
-	isFollower, err := a.DB.IsFollower(claims.UUID, uri.TargetName)
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+
+	isFollower, err := a.DB.IsFollower(claimer, &targetUUID)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "query follower", err)
@@ -140,7 +152,6 @@ func (a *SocialAPI) GetFollowerRelationHandler(ctx *gin.Context) {
 type getFollowingRelationHandlerUri = getFollowerRelationHandlerUri
 
 func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
 	uri := &getFollowingRelationHandlerUri{}
 	if err := ctx.BindUri(uri); err != nil {
 		ctx.Status(http.StatusBadRequest)
@@ -148,7 +159,9 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 		return
 	}
 
-	isFollowing, err := a.DB.IsFollowing(claims.UUID, uri.TargetName)
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+	isFollowing, err := a.DB.IsFollowing(claimer, &targetUUID)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "query following", err)
@@ -158,7 +171,7 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 }
 
 type deleteFollowerUri struct {
-	TargetName string `uri:"username" binding:"required"`
+	TargetUUID string `uri:"target" binding:"required,uuid"`
 }
 
 func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
@@ -169,14 +182,51 @@ func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-
-	if err := a.DB.RemoveFollower(&claims.UUID, uri.TargetName); err != nil {
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+	if err := a.DB.RemoveFollower(claimer, &targetUUID); err != nil {
 		ctx.Status(http.StatusNotAcceptable)
 		logger.ErrorWithCTX(ctx, "remove follower", err)
 		return
 	}
 	ctx.Status(http.StatusAccepted)
+}
+
+// duplicated, but remain (different function)
+type getRelationHandlerUri struct {
+	TargetUUID string `uri:"target" binding:"required,uuid"`
+}
+
+func (a *SocialAPI) GetRelationHandler(ctx *gin.Context) {
+	uri := &getRelationHandlerUri{}
+	if err := ctx.Bind(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding uri", err)
+		return
+	}
+
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+
+	// [TODO] integrate to database.GetRelationship for resource
+	isFollower, err := a.DB.IsFollower(claimer, &targetUUID)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "query follower", err)
+		return
+	}
+
+	isFollowing, err := a.DB.IsFollowing(claimer, &targetUUID)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "query follower", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &gin.H{
+		"is_following": isFollowing,
+		"is_follower":  isFollower,
+	})
 }
 
 type deleteFollowingUri = deleteFollowerUri
@@ -189,9 +239,9 @@ func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-
-	if err := a.DB.RemoveFollowing(&claims.UUID, uri.TargetName); err != nil {
+	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
+	claimer := api.MustGetClaimer(ctx)
+	if err := a.DB.RemoveFollowing(claimer, &targetUUID); err != nil {
 		ctx.Status(http.StatusNotAcceptable)
 		logger.ErrorWithCTX(ctx, "remove following", err)
 		return
@@ -200,7 +250,7 @@ func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
 }
 
 type acceptRequestFollowRequestUri struct {
-	Code string `uri:"code" binding:"required,uuid"`
+	RequestUser string `uri:"request_user" binding:"required,uuid"`
 }
 
 func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
@@ -211,10 +261,9 @@ func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	codeUUID := binaryuuid.MustParse(uri.Code)
-
-	if err := a.DB.AcceptRequestFollow(&claims.UUID, &codeUUID); err != nil {
+	requestUser := binaryuuid.MustParse(uri.RequestUser)
+	claimer := api.MustGetClaimer(ctx)
+	if err := a.DB.AcceptRequestFollow(claimer, &requestUser); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "accept request follow", err)
 		return
@@ -233,13 +282,39 @@ func (a *SocialAPI) RejectRequestFollowHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims := ctx.MustGet("claims").(*auth.AuthClaims)
-	codeUUID := binaryuuid.MustParse(uri.Code)
-
-	if err := a.DB.RejectRequestFollow(&claims.UUID, &codeUUID); err != nil {
+	requestUser := binaryuuid.MustParse(uri.RequestUser)
+	claimer := api.MustGetClaimer(ctx)
+	if err := a.DB.RejectRequestFollow(claimer, &requestUser); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "reject request follow", err)
 		return
 	}
 	ctx.Status(http.StatusNoContent)
+}
+
+type getFollowRequestsHandlerForm struct {
+	Offset *int `form:"offset,default=0" binding:"min=0"`
+	Limit  *int `form:"limit,default=64" binding:"min=1,max=64"`
+}
+
+func (a *SocialAPI) GetFollowRequestsHandler(ctx *gin.Context) {
+	form := &getFollowRequestsHandlerForm{}
+	if err := ctx.Bind(form); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind form", err)
+		return
+	}
+
+	claimer := api.MustGetClaimer(ctx)
+	requests, err := a.DB.GetFollowRequests(claimer, *form.Offset, *form.Limit)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "get follow request", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &gin.H{
+		"requests": requests,
+	})
+
 }

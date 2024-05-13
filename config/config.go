@@ -9,21 +9,22 @@ import (
 )
 
 var (
-	ErrInvalidConfig = errors.New("invalid config file")
-	ErrEmailConfig   = errors.New("invalid email config")
-	ErrStorageConfig = errors.New("invalid storage config")
+	ErrInvalidConfig   = errors.New("invalid config file")
+	ErrInvalidDatabase = errors.New("invalid database config")
+	ErrEmailConfig     = errors.New("invalid email config")
+	ErrStorageConfig   = errors.New("invalid storage config")
 )
 var ErrInvalidCredForm = errors.New("invalid cred form")
 
 type Config struct {
-	Service Service `yaml:"service"`
-	Mysql   Mysql   `yaml:"mysql"`
-	Redis   Redis   `yaml:"redis"`
-	Rpc     Rpc     `yaml:"rpc"`
-	Key     Key     `yaml:"key"`
-	Oauth   Oauth   `yaml:"oauth"`
-	Storage Storage `yaml:"storage"`
-	Email   Email   `yaml:"email"`
+	Service  Service  `yaml:"service"`
+	Database Database `yaml:"database"`
+	Redis    Redis    `yaml:"redis"`
+	Rpc      Rpc      `yaml:"rpc"`
+	Key      Key      `yaml:"key"`
+	Oauth    Oauth    `yaml:"oauth"`
+	Storage  Storage  `yaml:"storage"`
+	Email    Email    `yaml:"email"`
 }
 
 type Service struct {
@@ -53,11 +54,23 @@ type Log struct {
 	Console    bool   `yaml:"console"`
 }
 
+type Database struct {
+	Mysql  *Mysql  `yaml:"mysql"`
+	SQLite *SQLite `yaml:"sqlite"`
+}
+
+type SQLite struct {
+	Path string `yaml:"path"`
+}
+
 type Mysql struct {
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Address  string `yaml:"address"`
-	Port     int    `yaml:"port"`
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+	Address      string `yaml:"address"`
+	Port         int    `yaml:"port"`
+	MaxIdleConns int    `yaml:"maxIdleConns"`
+	MaxOpenConns int    `yaml:"maxOpenConns"`
+	MaxLifetime  int    `yaml:"maxLifeTime"`
 }
 
 type Redis struct {
@@ -143,6 +156,13 @@ func ParseConfig(filepath string) (c *Config, err error) {
 			err = ErrInvalidConfig
 		}
 		err = fmt.Errorf("%w: %w", ErrEmailConfig, err)
+	}
+
+	if c.Database.Mysql == nil && c.Database.SQLite == nil {
+		if err == nil {
+			err = ErrInvalidConfig
+		}
+		err = fmt.Errorf("%w: %w", ErrInvalidDatabase, err)
 	}
 	return
 }
