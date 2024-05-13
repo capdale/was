@@ -66,5 +66,5 @@ func (s *DatabaseSuite) TestAcceptanceSocialFollow() {
 
 	// check user3 follower [user1]
 	requests, _ = s.d.GetFollowers(claimer3, user3, 0, 1)
-	assert.Equal(s.T(), user1, *((*requests)[0]))
+	assert.Equal(s.T(), *user1, *((*requests)[0]))
 }
