@@ -1,9 +1,7 @@
-# Modoo collection was server
-
 ![was_image](./docs/was.png)
 
 <div align="center">
-Modoo collection was server
+<h1>Modoo collection WAS</h1>
 </div>
 
 # Setup
