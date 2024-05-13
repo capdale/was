@@ -38,7 +38,7 @@ func New(database database) *SocialAPI {
 }
 
 type getFollowersHandlerUri struct {
-	Target string `uri:"target" binding:"required,uri"`
+	Target string `uri:"target" binding:"required,uuid"`
 }
 
 type getFollowersHandlerForm struct {
@@ -224,8 +224,8 @@ func (a *SocialAPI) GetRelationHandler(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, &gin.H{
-		"following": isFollowing,
-		"follower":  isFollower,
+		"is_following": isFollowing,
+		"is_follower":  isFollower,
 	})
 }
 
@@ -313,6 +313,8 @@ func (a *SocialAPI) GetFollowRequestsHandler(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, requests)
+	ctx.JSON(http.StatusOK, &gin.H{
+		"requests": requests,
+	})
 
 }
