@@ -2,8 +2,11 @@ name: Push test
 
 on:
   push:
-    branches: [ "main" ]
-
+    branches:
+      - main
+  pull_request:
+    types: [opened]
+  
 jobs:
   build:
     runs-on: ubuntu-latest
