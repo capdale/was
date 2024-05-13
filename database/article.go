@@ -35,7 +35,7 @@ func (d *DB) IsCollectionOwned(claimer *claimer.Claimer, collectionUUIDs *[]bina
 			querys[i] = userId
 		}
 
-		if err := d.DB.
+		if err := tx.
 			Model(&model.Collection{}).
 			Where("user_id = ? AND uuid = ?", querys, *collectionUUIDs).
 			Count(&count).Error; err != nil {
@@ -88,7 +88,7 @@ func (d *DB) GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*mode
 			return ErrInvalidPermission
 		}
 
-		return d.DB.
+		return tx.
 			Model(&model.Article{}).
 			Preload("ArticleCollections").
 			Preload("ArticleImages").
@@ -122,12 +122,12 @@ func hasPermissionArticle(tx *gorm.DB, claimer *claimer.Claimer, linkId *binaryu
 	return ok, err
 }
 
-func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error) {
+func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
 	if offset < 0 || limit < 1 || limit > 64 {
 		return nil, ErrInvalidInput
 	}
 
-	articles := make([]model.Article, limit)
+	links := []*binaryuuid.UUID{}
 	if err := d.DB.Transaction(func(tx *gorm.DB) error {
 		claimerId, err := getUserIdByClaimer(tx, claimer)
 		if err != nil {
@@ -148,17 +148,13 @@ func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *bin
 		}
 
 		return tx.
-			Select("LinkID").
-			Where("user_uuid = ?", userUUID).
-			Find(&articles).Error
+			Model(&model.Article{}).
+			Select("link_uuid").
+			Where("user_id = ?", userId).
+			Find(&links).Error
 
 	}); err != nil {
 		return nil, err
-	}
-
-	links := make([]binaryuuid.UUID, len(articles))
-	for i, article := range articles {
-		links[i] = article.LinkUUID
 	}
 	return &links, nil
 }
