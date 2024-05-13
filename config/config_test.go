@@ -12,20 +12,8 @@ func TestConfig(t *testing.T) {
 		path string
 	}{
 		{
-			"mock object",
-			"suite/mock_email_config.yaml",
-		},
-		{
-			"ses service",
-			"suite/ses_email_config.yaml",
-		},
-		{
-			"local storage",
-			"suite/localstorage_config.yaml",
-		},
-		{
-			"s3 service",
-			"suite/s3_config.yaml",
+			"default",
+			"suite/default_config.yaml",
 		},
 	}
 
