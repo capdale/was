@@ -4,13 +4,44 @@
 <h1>Modoo collection WAS</h1>
 </div>
 
-# Setup
+Modoo collection web application server
 
-### Config
+- [configuration](#configuration)
+- [how to run](#how-to-run)
+- [build](#build)
+- [security](#security)
+- [test](#test-and-develop)
+- [background service (docker compose)](#background-service-mysql-and-redis)
+
+## Configuration
 
 Ref [example.yaml](./example.yaml), rename to config.yaml
 
-#### email
+### database
+
+One of following options
+
+- sqlite 
+  |Name|value|property|
+  |---|---|---|
+  |path|tmp/sqlite.db|db file path|
+
+  This option for using SQLite  
+
+- mysql
+  |Name|value|property|
+  |---|---|---|
+  |username|root|username|
+  |password|password|password|
+  |address|127.0.0.1|db address|
+  |port|3306|db port|
+  |maxIdelConns|10|db max idle connections|
+  |maxOpenConns|100|db max open connections|
+  |maxLifeTime|180|connection max life time|
+
+  This option for using MySQL    
+
+### email
 
 One of following options
 
@@ -30,7 +61,7 @@ One of following options
 
   id and key pair is optional, if there is no id and key value, then server will retrieve aws ec2 temporary credential
 
-#### storage
+### storage
 
 One of following options
 
@@ -49,7 +80,7 @@ One of following options
 
   id and key pair is optional, if there is no id and key value, then server will retrieve aws ec2 temporary credential
 
-### How to run
+## How to run
 
 Ref [example.yaml](./example.yaml), rename to config.yaml  
 If you want to use docker network, [see this](https://docs.docker.com/network/)
@@ -60,6 +91,7 @@ make docker-image
 docker run -d -p 443:443 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
 ```
 
+## Build
 ### Build (Native)
 
 Require go
@@ -112,22 +144,21 @@ make docker-image-linux-arm64
 # tag arm64/was
 ```
 
-#### security
+## Security
 
 Database access management  
 Do not use root account to access database, make new role with restricted access
 
-# Test and Develop
+## Test and Develop
 
 > [!WARNING]
 > Do not use test setting in production!
 
-#### Background service (mysql and redis)
-
-[./compose.yaml](./compose.yaml)
+## Background service (mysql and redis)
+Redis is required (MySQL optional, SQLite)  
+Ref [./compose.yaml](./compose.yaml)
 
 ```console
 docker compose up -d
 ```
 
-#### Config
