@@ -23,12 +23,6 @@ jobs:
             type=semver,pattern={{major}}
             type=sha
 
-      - name: Create config file
-        run: |
-          touch config.yaml
-          echo '${{ secrets.CONFIG_YAML }}' >> config.yaml
-        shell: bash
-
       - name: Build
         run: |
           make docker-build-linux-amd64
