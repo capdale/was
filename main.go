@@ -15,7 +15,9 @@ import (
 )
 
 func main() {
-	configPath := flag.String("configpath", "config.yaml", "config path")
+	configPath := flag.String("c", "config.yaml", "config file path")
+	flag.Parse()
+
 	config, err := config.ParseConfig(*configPath)
 	if err != nil {
 		panic(err)
