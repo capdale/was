@@ -21,12 +21,12 @@ Ref [example.yaml](./example.yaml), rename to config.yaml
 
 One of following options
 
-- sqlite 
+- sqlite
   |Name|value|property|
   |---|---|---|
   |path|tmp/sqlite.db|db file path|
 
-  This option for using SQLite  
+  This option for using SQLite
 
 - mysql
   |Name|value|property|
@@ -39,7 +39,7 @@ One of following options
   |maxOpenConns|100|db max open connections|
   |maxLifeTime|180|connection max life time|
 
-  This option for using MySQL    
+  This option for using MySQL
 
 ### email
 
@@ -88,10 +88,11 @@ If you want to use docker network, [see this](https://docs.docker.com/network/)
 ```console
 make docker-build
 make docker-image
-docker run -d -p 443:443 -v "${pwd}/secret:/server/secret" --network backnet was # set your port, image, bind mount
+docker run -d -p 443:443 -v "${pwd}/config.yaml:/server/config.yaml" --network backnet was # set your port, image, bind mount
 ```
 
 ## Build
+
 ### Build (Native)
 
 Require go
@@ -155,10 +156,10 @@ Do not use root account to access database, make new role with restricted access
 > Do not use test setting in production!
 
 ## Background service (mysql and redis)
+
 Redis is required (MySQL optional, SQLite)  
 Ref [./compose.yaml](./compose.yaml)
 
 ```console
 docker compose up -d
 ```
-

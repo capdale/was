@@ -10,9 +10,9 @@ RUN apt-get update && \
 WORKDIR /server
 
 COPY build/was-linux-amd64 .
-COPY config.yaml .
 COPY /templates ./templates
 COPY /static ./static 
+COPY example.yaml config.yaml
 
 ENV GIN_MODE=release
 
