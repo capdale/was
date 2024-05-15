@@ -9,6 +9,7 @@ config.yaml
 # static
 /static/*
 !/static/styles
+!/static/images
 
 # data
 test.json

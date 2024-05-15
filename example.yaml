@@ -63,7 +63,7 @@ email:
 
 storage:
   local:
-    baseDirectory: "base directory path"
+    baseDirectory: "./baseDirectory"
 
   # s3:
   #   region: "region"
