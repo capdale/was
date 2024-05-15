@@ -24,11 +24,18 @@ service:
     maxAge: 30
     console: true
 
-mysql:
-  username: root
-  password: password
-  address: localhost
-  port: 3306
+database:
+  sqlite:
+    path: tmp/sqlite.db
+
+  # mysql:
+  #   username: root
+  #   password: password
+  #   address: localhost
+  #   port: 3306
+  #   maxIdleConns: 10
+  #   maxOpenConns: 100
+  #   maxLifetime: 180
 
 redis:
   address: localhost:6379
@@ -47,18 +54,19 @@ oauth:
 
 email:
   mock: # mock option is priority
-  ses:
-    region: "region"
-    domain: "base domain"
-    id: "id" # optional
-    key: "key" # optional
+    type: "default"
+  # ses:
+  #   region: "region"
+  #   domain: "base domain"
+  #   id: "id" # optional
+  #   key: "key" # optional
 
 storage:
   local:
-    baseDirectory: "base directory path"
+    baseDirectory: "./baseDirectory"
 
-  s3:
-    region: "region"
-    bucketName: "name"
-    id: "id" # optional
-    key: "key" # optional
+  # s3:
+  #   region: "region"
+  #   bucketName: "name"
+  #   id: "id" # optional
+  #   key: "key" # optional
