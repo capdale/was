@@ -2,7 +2,6 @@ package articleAPI
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -156,12 +155,7 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 		return
 	}
 
-	links := make([]string, len(*articles))
-	for i, article := range *articles {
-		links[i] = base64.URLEncoding.EncodeToString(article[:])
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"links": links})
+	ctx.JSON(http.StatusOK, gin.H{"links": articles})
 }
 
 func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
@@ -214,7 +208,7 @@ func (a *ArticleAPI) GetArticleImageHandler(ctx *gin.Context) {
 }
 
 type deleteArticleHandlerUri struct {
-	ArticleLink string `uri:"link" binding:"required"`
+	ArticleLink string `uri:"link" binding:"required,uuid"`
 }
 
 func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
@@ -225,15 +219,9 @@ func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
 		return
 	}
 
-	articleId, err := DecodeLink(uri.ArticleLink)
-	if err != nil {
-		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "link invalid", err)
-		return
-	}
-
+	articleId := binaryuuid.MustParse(uri.ArticleLink)
 	claimerAuthUUID := api.MustGetClaimer(ctx)
-	if err := a.d.DeleteArticle(claimerAuthUUID, articleId); err != nil {
+	if err := a.d.DeleteArticle(claimerAuthUUID, &articleId); err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "delete article", err)
 		return
