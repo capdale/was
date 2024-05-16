@@ -83,6 +83,13 @@ func (o *OriginAPI) RegisterTicketHandler(ctx *gin.Context) {
 		return
 	}
 
+	if !validatePassword(&form.Password) {
+		err = ErrInvalidPasswordForm
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "password check error", err)
+		return
+	}
+
 	ticketUUID := binaryuuid.MustParse(form.Ticket)
 
 	err = o.DB.CreateOriginViaTicket(&ticketUUID, form.Username, form.Password)
