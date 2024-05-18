@@ -19,7 +19,9 @@ type EmailMock struct {
 
 // mocking object for testing always work
 func NewEmailMock(c *config.Mock) *EmailMock {
-	return &EmailMock{}
+	return &EmailMock{
+		logtype: c.Type,
+	}
 }
 
 func (m *EmailMock) SendTicketVerifyLink(ctx context.Context, email string, link string) error {
