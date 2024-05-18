@@ -161,7 +161,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	articleRouter := r.Group("/article")
 	{
 		articleRouter.POST("/", auth.AuthorizeRequiredMiddleware(), articleAPI.CreateArticleHandler)
-		articleRouter.GET("/get-links/:uuid", articleAPI.GetUserArticleLinksHandler)
+		articleRouter.GET("/get-links/:targetname", articleAPI.GetUserArticleLinksHandler)
 		articleRouter.GET("/:link", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleHandler)
 		articleRouter.DELETE("/:link", auth.AuthorizeRequiredMiddleware(), articleAPI.DeleteArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)

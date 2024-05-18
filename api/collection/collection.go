@@ -45,7 +45,7 @@ func New(database database, storage storage) *CollectAPI {
 type Collection = model.CollectionAPI
 
 type getUserCollectionsUri struct {
-	Targetname string `uri:"username" binding:"required,uuid"`
+	Targetname string `uri:"username" binding:"required"`
 }
 
 type getUserCollectionform struct {
