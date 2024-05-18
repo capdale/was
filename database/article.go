@@ -68,11 +68,11 @@ func (d *DB) CreateNewArticle(claimerUUID *claimer.Claimer, title string, conten
 			return err
 		}
 		return tx.Create(&model.Article{
-			UserID:             claimerId,
-			Title:              title,
-			Content:            content,
-			ArticleCollections: collections,
-			ArticleImages:      &images,
+			UserID:      claimerId,
+			Title:       title,
+			Content:     content,
+			Collections: collections,
+			Images:      &images,
 		}).Error
 	})
 }
