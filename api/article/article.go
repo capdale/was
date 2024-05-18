@@ -29,6 +29,11 @@ type database interface {
 	CreateNewArticle(claimer *claimer.Claimer, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
 	HasAccessPermissionArticleImage(claimer *claimer.Claimer, imageUUID *binaryuuid.UUID) (bool, error)
 	DeleteArticle(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUID) error
+
+	Comment(claimer *claimer.Claimer, articleId *binaryuuid.UUID, comment *string) error
+	GetComments(claimer *claimer.Claimer, articleId *binaryuuid.UUID, offset uint, limit uint) (*[]model.ArticleCommentAPI, error)
+	DoHeart(claimer *claimer.Claimer, aritcleId *binaryuuid.UUID, action int) error
+	CountHeart(claimer *claimer.Claimer, articleId *binaryuuid.UUID) (uint64, error)
 }
 
 type ArticleAPI struct {
@@ -158,17 +163,21 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"links": articles})
 }
 
+type getArticleHandlerUri struct {
+	UUID string `uri:"link" binding:"required,uuid"`
+}
+
 func (a *ArticleAPI) GetArticleHandler(ctx *gin.Context) {
-	link := ctx.Param("link")
-	linkId, err := DecodeLink(link)
-	if err != nil {
+	uri := &getArticleHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
 		ctx.Status(http.StatusNotFound)
-		logger.ErrorWithCTX(ctx, "parse link id", err)
+		logger.ErrorWithCTX(ctx, "binding uri error", err)
 		return
 	}
 
+	linkId := binaryuuid.MustParse(uri.UUID)
 	claimerAuthUUID := api.GetClaimer(ctx)
-	article, err := a.d.GetArticle(claimerAuthUUID, *linkId)
+	article, err := a.d.GetArticle(claimerAuthUUID, linkId)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "get article", err)
@@ -228,4 +237,133 @@ func (a *ArticleAPI) DeleteArticleHandler(ctx *gin.Context) {
 	}
 
 	ctx.Status(http.StatusNoContent)
+}
+
+type postCommentHandlerUri struct {
+	ArticleId string `uri:"link" binding:"uuid"`
+}
+
+type postCommentHandlerForm struct {
+	Comment string `form:"comment" binding:"min=1,max=255"`
+}
+
+func (a *ArticleAPI) PostCommentHandler(ctx *gin.Context) {
+	uri := &postCommentHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri error", err)
+		return
+	}
+
+	form := &postCommentHandlerForm{}
+	if err := ctx.Bind(form); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind form error", err)
+		return
+	}
+
+	articleId := binaryuuid.MustParse(uri.ArticleId)
+	claimer := api.MustGetClaimer(ctx)
+
+	if err := a.d.Comment(claimer, &articleId, &form.Comment); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "comment error", err)
+		return
+	}
+	ctx.Status(http.StatusAccepted)
+}
+
+type getCommentsHandlerUri struct {
+	ArticleId string `uri:"link" binding:"uuid"`
+}
+
+type getCommentsHandlerForm struct {
+	Offset uint `form:"offset" binding:"min=0"`
+	Limit  uint `form:"limit" binding:"min=1, max=64"`
+}
+
+func (a *ArticleAPI) GetCommentsHandler(ctx *gin.Context) {
+	uri := &getCommentsHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding error", err)
+		return
+	}
+
+	form := &getCommentsHandlerForm{}
+	if err := ctx.Bind(form); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "binding error", err)
+		return
+	}
+
+	claimer := api.MustGetClaimer(ctx)
+	linkId := binaryuuid.MustParse(uri.ArticleId)
+	comments, err := a.d.GetComments(claimer, &linkId, form.Offset, form.Limit)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "get comment", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, comments)
+}
+
+type heartHandlerUri = postCommentHandlerUri
+type heartHandlerForm struct {
+	Action string `form:"action" binding:"oneof=apply cancel"`
+}
+
+func (a *ArticleAPI) HeartHandler(ctx *gin.Context) {
+	uri := &heartHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri error", err)
+		return
+	}
+	form := &heartHandlerForm{}
+	if err := ctx.Bind(form); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind form error", err)
+		return
+	}
+	claimer := api.MustGetClaimer(ctx)
+	articleId := binaryuuid.MustParse(uri.ArticleId)
+	var action int
+	if form.Action == "apply" {
+		action = 1
+	} else if form.Action == "cancel" {
+		action = 0
+	}
+	if err := a.d.DoHeart(claimer, &articleId, action); err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "do heart error", err)
+		return
+	}
+
+	ctx.Status(http.StatusAccepted)
+}
+
+type getHeartCountHandlerUri = postCommentHandlerUri
+
+func (a *ArticleAPI) GetHeartCountHandler(ctx *gin.Context) {
+	uri := &getHeartCountHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri error", err)
+		return
+	}
+
+	claimer := api.GetClaimer(ctx)
+	articleId := binaryuuid.MustParse(uri.ArticleId)
+	heartCounts, err := a.d.CountHeart(claimer, &articleId)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "count heart error", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &gin.H{
+		"counts": heartCounts,
+	})
 }
