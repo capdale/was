@@ -154,7 +154,9 @@ func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *bin
 			Model(&model.Article{}).
 			Select("link_uuid").
 			Where("user_id = ?", userId).
-			Find(&links).Error
+			Find(&links).
+			Offset(offset).
+			Limit(limit).Error
 
 	}); err != nil {
 		return nil, err
