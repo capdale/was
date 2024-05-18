@@ -3,7 +3,10 @@ package email
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"regexp"
+
+	"github.com/capdale/was/config"
 )
 
 type EmailService interface {
@@ -11,14 +14,18 @@ type EmailService interface {
 }
 
 type EmailMock struct {
+	logtype string
 }
 
 // mocking object for testing always work
-func NewEmailMock() *EmailMock {
+func NewEmailMock(c *config.Mock) *EmailMock {
 	return &EmailMock{}
 }
 
 func (m *EmailMock) SendTicketVerifyLink(ctx context.Context, email string, link string) error {
+	if m.logtype == "cli" {
+		fmt.Println(link)
+	}
 	return nil
 }
 
