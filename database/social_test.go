@@ -5,9 +5,9 @@ import (
 )
 
 func (s *DatabaseSuite) TestAcceptanceSocialFollow() {
-	s.createTestAccount("test1@test.com", "test1")
-	s.createTestAccount("test2@test.com", "test2")
-	s.createTestAccount("test3@test.com", "test3")
+	s.createTestAccount("test1@test.com", "test1", "test")
+	s.createTestAccount("test2@test.com", "test2", "test")
+	s.createTestAccount("test3@test.com", "test3", "test")
 
 	claimer1, user1, _ := s.loginAccount("test1", "test")
 	claimer2, user2, _ := s.loginAccount("test2", "test")

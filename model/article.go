@@ -9,19 +9,21 @@ import (
 )
 
 type Article struct {
-	Id                 uint64          `gorm:"primaryKey"`
-	UserID             uint64          `gorm:"index;index:uid_link_uuid_idx,unique;not null"` // = UserId
-	User               User            `gorm:"references:id"`
-	LinkUUID           binaryuuid.UUID `gorm:"index:uid_link_uuid_idx,unique;not null;"`
-	Title              string          `gorm:"type:varchar(32);not null"`
-	Content            string          `gorm:"type:TEXT;"`
-	CreateAt           time.Time       `gorm:"autoCreateTime"`
-	UpdateAt           time.Time       `gorm:"autoUpdateTime"`
-	DeletedAt          gorm.DeletedAt
-	Tags               []*ArticleTag
-	ViewCount          uint64
-	ArticleImages      *[]*ArticleImage     `gorm:"foreignKey:ArticleId;references:Id;contraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	ArticleCollections []*ArticleCollection `gorm:"foreignKey:ArticleId;references:Id;contraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Id          uint64          `gorm:"primaryKey"`
+	UserID      uint64          `gorm:"index;index:uid_link_uuid_idx,unique;not null"` // = UserId
+	User        User            `gorm:"references:id"`
+	LinkUUID    binaryuuid.UUID `gorm:"index:uid_link_uuid_idx,unique;not null;"`
+	Title       string          `gorm:"type:varchar(32);not null"`
+	Content     string          `gorm:"type:TEXT;"`
+	CreateAt    time.Time       `gorm:"autoCreateTime"`
+	UpdateAt    time.Time       `gorm:"autoUpdateTime"`
+	DeletedAt   gorm.DeletedAt
+	Meta        *ArticleMeta     `gorm:"foreignKey:ArticleId;references:Id;contraint:OnDelete:CASCADE"`
+	Hearts      *[]*ArticleHeart `gorm:"foreginKey:ArticleId;references:Id;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Tags        []*ArticleTag
+	Images      *[]*ArticleImage     `gorm:"foreignKey:ArticleId;references:Id;contraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Collections []*ArticleCollection `gorm:"foreignKey:ArticleId;references:Id;contraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Comments    *[]*ArticleComment   `gorm:"foreignKey:ArticleId;references:Id;constaint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 func (a *Article) BeforeCreate(tx *gorm.DB) error {
@@ -30,7 +32,24 @@ func (a *Article) BeforeCreate(tx *gorm.DB) error {
 	}
 	uid, err := uuid.NewRandom()
 	a.LinkUUID = binaryuuid.UUID(uid)
+
+	// initialize meta data
+	a.Meta = &ArticleMeta{
+		ViewCount:  0,
+		HeartCount: 0,
+	}
 	return err
+}
+
+type ArticleMeta struct {
+	ArticleId  uint64 `gorm:"index" json:"-"`
+	ViewCount  uint64
+	HeartCount uint64
+}
+
+type ArticleHeart struct {
+	ArticleId uint64 `gorm:"index:article_heart_idx,unique"`
+	UserId    uint64 `gorm:"index:article_heart_idx,unique"`
 }
 
 type ArticleImage struct {
@@ -52,14 +71,21 @@ type ArticleTag struct {
 
 type ArticleComment struct {
 	ArticleId uint64 `gorm:"index"`
+	UserId    uint64 `gorm:"index"`
 	Comment   string `grom:"varchar(225);not null"`
 }
 
 type ArticleAPI struct {
-	Id                 uint64               `json:"-"`
-	Title              string               `json:"title"`
-	Content            string               `json:"content"`
-	UpdateAt           time.Time            `json:"update_at"`
-	ArticleCollections []*ArticleCollection `json:"collections" gorm:"foreignKey:ArticleId;references:Id"`
-	ArticleImages      []*ArticleImage      `json:"images" gorm:"foreignKey:ArticleId;references:Id"`
+	Id          uint64               `json:"-"`
+	Title       string               `json:"title"`
+	Content     string               `json:"content"`
+	UpdateAt    time.Time            `json:"update_at"`
+	Collections []*ArticleCollection `json:"collections" gorm:"foreignKey:ArticleId;references:Id"`
+	Images      *[]*ArticleImage     `json:"images" gorm:"foreignKey:ArticleId;references:Id"`
+	Meta        *ArticleMeta         `json:"meta" gorm:"foreignKey:ArticleId;references:Id"`
+}
+
+type ArticleCommentAPI struct {
+	UUID    binaryuuid.UUID `json:"uuid"`
+	Comment string          `json:"comment"`
 }

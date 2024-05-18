@@ -68,11 +68,11 @@ func (d *DB) CreateNewArticle(claimerUUID *claimer.Claimer, title string, conten
 			return err
 		}
 		return tx.Create(&model.Article{
-			UserID:             claimerId,
-			Title:              title,
-			Content:            content,
-			ArticleCollections: collections,
-			ArticleImages:      &images,
+			UserID:      claimerId,
+			Title:       title,
+			Content:     content,
+			Collections: collections,
+			Images:      &images,
 		}).Error
 	})
 }
@@ -80,46 +80,49 @@ func (d *DB) CreateNewArticle(claimerUUID *claimer.Claimer, title string, conten
 func (d *DB) GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
 	article := &model.ArticleAPI{}
 	err := d.DB.Transaction(func(tx *gorm.DB) error {
-		ok, err := hasPermissionArticle(tx, claimer, &linkId)
+		claimerId, err := getUserIdByClaimer(tx, claimer)
 		if err != nil {
 			return err
 		}
+
+		articleOwner, err := getArticleOwner(tx, &linkId)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.UserId)
+		if err != nil {
+			return err
+		}
+
 		if !ok {
 			return ErrInvalidPermission
 		}
 
 		return tx.
 			Model(&model.Article{}).
-			Preload("ArticleCollections").
-			Preload("ArticleImages").
-			Where("link_uuid = ?", linkId).
+			Preload("Collections").
+			Preload("Images").
+			Preload("Meta").
+			Where(articleOwner.Id).
 			First(article).Error
 	})
 	return article, err
 }
 
-func hasPermissionArticle(tx *gorm.DB, claimer *claimer.Claimer, linkId *binaryuuid.UUID) (bool, error) {
-	var ok bool = false
-	err := tx.Transaction(func(tx *gorm.DB) error {
-		var ownerId uint64
-		var claimerId uint64
-		var err error
-		if err = tx.
-			Model(&model.Article{}).
-			Select("user_id").
-			Where("link_uuid = ?", linkId).
-			First(&ownerId).Error; err != nil {
-			return err
-		}
+type ArticleOwner struct {
+	Id     uint64
+	UserId uint64
+}
 
-		claimerId, err = getUserIdByClaimer(tx, claimer)
-		if err != nil {
-			return err
-		}
-		ok, err = hasQueryPermission(tx, claimerId, ownerId)
-		return err
-	})
-	return ok, err
+func getArticleOwner(tx *gorm.DB, linkId *binaryuuid.UUID) (*ArticleOwner, error) {
+	owner := &ArticleOwner{}
+	err := tx.
+			Model(&model.Article{}).
+		Select("id, user_id").
+			Where("link_uuid = ?", linkId).
+		First(&owner).Error
+	return owner, err
 }
 
 func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
@@ -151,7 +154,9 @@ func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *bin
 			Model(&model.Article{}).
 			Select("link_uuid").
 			Where("user_id = ?", userId).
-			Find(&links).Error
+			Find(&links).
+			Offset(offset).
+			Limit(limit).Error
 
 	}); err != nil {
 		return nil, err
@@ -211,4 +216,147 @@ func (d *DB) DeleteArticle(claimer *claimer.Claimer, articleLinkId *binaryuuid.U
 		}
 		return nil
 	})
+}
+
+func (d *DB) GetComments(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUID, offset uint, limit uint) (*[]model.ArticleCommentAPI, error) {
+	comments := []model.ArticleCommentAPI{}
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		articleOwner, err := getArticleOwner(tx, articleLinkId)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.Id)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
+		}
+
+		if err := tx.
+			Model(&model.ArticleComment{}).
+			Joins("JOIN users ON article_comments.user_id == users.id").
+			Select("users.uuid, article_comments.comment").
+			Where("article_id = ?", articleOwner.Id).
+			Find(&comments).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	return &comments, err
+}
+
+func (d *DB) Comment(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUID, comment *string) error {
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		articleOwner, err := getArticleOwner(tx, articleLinkId)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.Id)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
+		}
+
+		return tx.Create(&model.ArticleComment{
+			ArticleId: articleOwner.Id,
+			UserId:    claimerId,
+			Comment:   *comment,
+		}).Error
+	})
+}
+
+func (d *DB) DoHeart(claimer *claimer.Claimer, articleUUID *binaryuuid.UUID, action int) error {
+	if action != 0 && action != 1 {
+		return ErrInvalidInput
+	}
+	return d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		articleOwner, err := getArticleOwner(tx, articleUUID)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.UserId)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
+		}
+		heart := &model.ArticleHeart{
+			ArticleId: articleOwner.Id,
+			UserId:    claimerId,
+		}
+		var addHeart int
+		if action == 1 {
+			err = tx.Create(heart).Error
+			addHeart = 1
+		}
+		if action == 0 {
+			err = tx.
+				Where("article_id = ? AND user_id = ?", heart.ArticleId, heart.UserId).
+				Delete(&model.ArticleHeart{}).Error
+			addHeart = -1
+		}
+		if err != nil {
+			return err
+		}
+
+		return tx.
+			Model(&model.ArticleMeta{}).
+			Where("article_id = ?", articleOwner.Id).
+			Update("heart_count", gorm.Expr("heart_count + ?", addHeart)).Error
+	})
+}
+
+func (d *DB) CountHeart(claimer *claimer.Claimer, articleId *binaryuuid.UUID) (uint64, error) {
+	var count uint64
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		articleOwner, err := getArticleOwner(tx, articleId)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.Id)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
+		}
+		return tx.
+			Model(&model.ArticleMeta{}).
+			Select("heart_count").
+			Where("article_id = ?", articleOwner.Id).
+			Find(&count).Error
+	})
+	return count, err
 }

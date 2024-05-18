@@ -88,7 +88,7 @@ If you want to use docker network, [see this](https://docs.docker.com/network/)
 ```console
 make docker-build
 make docker-image
-docker run -d -p 443:443 -v "${pwd}/config.yaml:/server/config.yaml" --network backnet was # set your port, image, bind mount
+docker run -d -p 443:443 -v "${PWD}/logs:/server/logs" -v "${PWD}/config.yaml:/server/config.yaml" --network backnet was
 ```
 
 ## Build

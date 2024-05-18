@@ -165,6 +165,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		articleRouter.GET("/:link", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleHandler)
 		articleRouter.DELETE("/:link", auth.AuthorizeRequiredMiddleware(), articleAPI.DeleteArticleHandler)
 		articleRouter.GET("/image/:uuid", auth.AuthorizeOptionalMiddleware(), articleAPI.GetArticleImageHandler)
+
+		articleRouter.GET("/:link/comment", auth.AuthorizeOptionalMiddleware(), articleAPI.GetCommentsHandler)
+		articleRouter.POST("/:link/comment", auth.AuthorizeRequiredMiddleware(), articleAPI.PostCommentHandler)
+		articleRouter.POST("/:link/heart", auth.AuthorizeRequiredMiddleware(), articleAPI.HeartHandler)
 	}
 
 	socialAPI := socialAPI.New(d)

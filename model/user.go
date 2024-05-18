@@ -19,16 +19,18 @@ type User struct {
 	AuthUUID        binaryuuid.UUID `gorm:"uniqueIndex;"` // this used when authentication
 	UUID            binaryuuid.UUID `gorm:"uniqueIndex;"` // this used when expose identifier
 	AccountType     int
-	Email           string           `gorm:"size:64;uniqueIndex;not null"`
-	CreatedAt       time.Time        `gorm:"autoCreateTime"`
-	UpdateAt        time.Time        `gorm:"autoUpdateTime"`
-	Collections     *[]Collection    `gorm:"foreignkey:UserId;references:Id;constraint:OnDelete:SET NULL;"`
-	OriginUser      *OriginUser      `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
-	SocialUser      *SocialUser      `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
-	UserDisplayType *UserDisplayType `gorm:"foreignKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
-	Tokens          *[]*Token        `gorm:"foreignKey:UserId;references:Id;constraint:OnUpdate:SET NULL,OnDelete:CASCADE"`
-	UserFollowers   *[]*UserFollow   `gorm:"foreginKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
-	UserFollowings  *[]*UserFollow   `gorm:"foreginKey:TargetId;references:Id;constraint:OnDelete:CASCADE"`
+	Email           string             `gorm:"size:64;uniqueIndex;not null"`
+	CreatedAt       time.Time          `gorm:"autoCreateTime"`
+	UpdateAt        time.Time          `gorm:"autoUpdateTime"`
+	Collections     *[]Collection      `gorm:"foreignkey:UserId;references:Id;constraint:OnDelete:SET NULL;"`
+	OriginUser      *OriginUser        `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
+	SocialUser      *SocialUser        `gorm:"foreignkey:Id;references:Id;constraint:OnDelete:CASCADE"`
+	UserDisplayType *UserDisplayType   `gorm:"foreignKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
+	Tokens          *[]*Token          `gorm:"foreignKey:UserId;references:Id;constraint:OnUpdate:SET NULL,OnDelete:CASCADE"`
+	UserFollowers   *[]*UserFollow     `gorm:"foreginKey:UserId;references:Id;constraint:OnDelete:CASCADE"`
+	UserFollowings  *[]*UserFollow     `gorm:"foreginKey:TargetId;references:Id;constraint:OnDelete:CASCADE"`
+	Hearts          *[]*ArticleHeart   `gorm:"foreginKey:UserId;references:Id;constraint:OnDelete:SET NULL"`
+	ArticleComments *[]*ArticleComment `gorm:"foreginKey:UserId;references:Id;constraint:OnDelete:SET NULL"`
 }
 
 func (u *User) AfterCreate(tx *gorm.DB) error {

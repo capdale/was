@@ -88,7 +88,7 @@ func (d *DB) AutoMigrate() (err error) {
 		&model.UserDisplayType{}, &model.UserFollow{}, &model.UserFollowRequest{},
 		&model.Collection{},
 		&model.ReportUser{}, &model.ReportArticle{}, &model.ReportBug{}, &model.ReportHelp{}, &model.ReportEtc{},
-		&model.Article{}, &model.ArticleCollection{}, &model.ArticleImage{},
+		&model.Article{}, &model.ArticleCollection{}, &model.ArticleImage{}, &model.ArticleMeta{}, &model.ArticleHeart{}, &model.ArticleComment{},
 	)
 	return err
 }
