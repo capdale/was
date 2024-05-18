@@ -168,7 +168,10 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 
 		articleRouter.GET("/:link/comment", auth.AuthorizeOptionalMiddleware(), articleAPI.GetCommentsHandler)
 		articleRouter.POST("/:link/comment", auth.AuthorizeRequiredMiddleware(), articleAPI.PostCommentHandler)
+
 		articleRouter.POST("/:link/heart", auth.AuthorizeRequiredMiddleware(), articleAPI.HeartHandler)
+		articleRouter.GET("/:link/heart", auth.AuthorizeRequiredMiddleware(), articleAPI.GetHeartStateHandler)
+		articleRouter.GET("/:link/heart/count", auth.AuthorizeOptionalMiddleware(), articleAPI.GetHeartCountHandler)
 	}
 
 	socialAPI := socialAPI.New(d)
