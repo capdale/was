@@ -5,9 +5,9 @@ import (
 	"github.com/capdale/was/types/claimer"
 )
 
-func (s *DatabaseSuite) createTestAccount(email string, username string) {
+func (s *DatabaseSuite) createTestAccount(email string, username string, password string) {
 	ticket, _ := s.d.CreateTicketByEmail(email)
-	s.d.CreateOriginViaTicket(ticket, username, "test")
+	s.d.CreateOriginViaTicket(ticket, username, password)
 }
 
 func (s *DatabaseSuite) loginAccount(username string, password string) (*claimer.Claimer, *binaryuuid.UUID, error) {
