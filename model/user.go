@@ -17,7 +17,6 @@ type User struct {
 	Id              uint64          `gorm:"primaryKey"`
 	Username        string          `gorm:"type:varchar(36);uniqueIndex:username;not null"`
 	AuthUUID        binaryuuid.UUID `gorm:"uniqueIndex;"` // this used when authentication
-	UUID            binaryuuid.UUID `gorm:"uniqueIndex;"` // this used when expose identifier
 	AccountType     int
 	Email           string             `gorm:"size:64;uniqueIndex;not null"`
 	CreatedAt       time.Time          `gorm:"autoCreateTime"`
@@ -70,15 +69,10 @@ func (t *Token) AfterCreate(tx *gorm.DB) error {
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
-	uid, err := uuid.NewRandom()
-	if err != nil {
-		return err
-	}
 	authUUID, err := uuid.NewRandom()
 	if err != nil {
 		return err
 	}
-	u.UUID = binaryuuid.UUID(uid)
 	u.AuthUUID = binaryuuid.UUID(authUUID)
 	return err
 }
@@ -113,14 +107,17 @@ func (u *UserFollow) BeforeCreate(tx *gorm.DB) error {
 }
 
 type UserFollowRequest struct {
-	Id       uint64 `gorm:"primaryKey"`
-	UserId   uint64 `gorm:"index:user_req_idx;uniqueIndex:user_req_target_idx"`
-	TargetId uint64 `gorm:"index:target_req_idx;uniqueIndex:user_req_target_idx"`
+	Id       uint64          `gorm:"primaryKey"`
+	Code     binaryuuid.UUID `gorm:"index:code;unique"`
+	UserId   uint64          `gorm:"index:user_req_idx;uniqueIndex:user_req_target_idx"`
+	TargetId uint64          `gorm:"index:target_req_idx;uniqueIndex:user_req_target_idx"`
 }
 
 func (u *UserFollowRequest) BeforeCreate(tx *gorm.DB) error {
 	if u.UserId == 0 || u.TargetId == 0 {
 		return ErrAnonymousCreate
 	}
-	return nil
+	var err error = nil
+	u.Code, err = binaryuuid.NewRandom()
+	return err
 }

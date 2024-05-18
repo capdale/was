@@ -86,6 +86,6 @@ type ArticleAPI struct {
 }
 
 type ArticleCommentAPI struct {
-	UUID    binaryuuid.UUID `json:"uuid"`
-	Comment string          `json:"comment"`
+	Username string `json:"username"`
+	Comment  string `json:"comment"`
 }

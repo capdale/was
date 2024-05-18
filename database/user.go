@@ -57,8 +57,8 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 	return user, err
 }
 
-func getUserIdByUUID(tx *gorm.DB, userUUID *binaryuuid.UUID) (uint64, error) {
-	if userUUID == nil {
+func getUserIdByName(tx *gorm.DB, username *string) (uint64, error) {
+	if username == nil {
 		return 0, nil
 	}
 
@@ -66,7 +66,7 @@ func getUserIdByUUID(tx *gorm.DB, userUUID *binaryuuid.UUID) (uint64, error) {
 	if err := tx.
 		Model(&model.User{}).
 		Select("id").
-		Where("uuid = ?", userUUID).
+		Where("username = ?", username).
 		First(&userId).Error; err != nil {
 		return 0, err
 	}
@@ -182,26 +182,25 @@ func (d *DB) CreateOriginViaTicket(ticketUUID *binaryuuid.UUID, username string,
 }
 
 type userClaimdNhashed struct {
-	UUID     binaryuuid.UUID
 	AuthUUID binaryuuid.UUID
 	Hashed   []byte
 }
 
-func (d *DB) GetOriginUserClaimerAndUUID(username string, password string) (*claimer.Claimer, *binaryuuid.UUID, error) {
+func (d *DB) GetOriginUserClaim(username string, password string) (*claimer.Claimer, error) {
 	user := &userClaimdNhashed{}
 	if err := d.DB.
 		Model(&model.User{}).
-		Select("users.uuid", "users.auth_uuid", "origin_users.hashed").
+		Select("users.auth_uuid", "origin_users.hashed").
 		Joins("INNER JOIN origin_users ON origin_users.id = users.id").
 		Where("username = ? AND account_type = ?", username, model.AccountTypeOrigin).
 		First(user).Error; err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := bcrypt.CompareHashAndPassword(user.Hashed, []byte(password)); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	claimer := claimer.New(&user.AuthUUID)
-	return claimer, &user.UUID, nil
+	return claimer, nil
 }
 
 const (

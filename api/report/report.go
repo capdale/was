@@ -15,7 +15,7 @@ import (
 var logger = baseLogger.Logger
 
 type database interface {
-	CreateReportUser(issuerUUID *claimer.Claimer, targetUUID *binaryuuid.UUID, detailType int, description string) error
+	CreateReportUser(issuerUUID *claimer.Claimer, targetname *string, detailType int, description string) error
 	CreateReportArticle(issuerUUID *claimer.Claimer, targetarticleUUID *binaryuuid.UUID, detailType int, description string) error
 	CreateReportBug(issuerUUID *claimer.Claimer, title string, description string) error
 	CreateReportHelp(issuerUUID *claimer.Claimer, title string, description string) error
@@ -34,7 +34,7 @@ func New(d database) *ReportAPI {
 
 type postReportUserForm struct {
 	ReportDetailType *int    `json:"report_detail_type" binding:"required"`
-	TargetUUID       *string `json:"target" binding:"required,uuid"`
+	TargetUUID       *string `json:"targetname" binding:"required"`
 	Description      string  `json:"description"`
 }
 
@@ -55,8 +55,7 @@ func (r *ReportAPI) PostUserReportHandler(ctx *gin.Context) {
 	// validate form end
 
 	issuerUUID := api.GetClaimer(ctx)
-	targetUUID := binaryuuid.MustParse(*form.TargetUUID)
-	if err := r.d.CreateReportUser(issuerUUID, &targetUUID, *form.ReportDetailType, form.Description); err != nil {
+	if err := r.d.CreateReportUser(issuerUUID, form.TargetUUID, *form.ReportDetailType, form.Description); err != nil {
 		api.BasicInternalServerError(ctx)
 		logger.ErrorWithCTX(ctx, "create report user", err)
 		return

@@ -20,7 +20,7 @@ type database interface {
 	CreateTicketByEmail(email string) (*binaryuuid.UUID, error)
 	GetEmailByTicket(ticketUUID *binaryuuid.UUID) (string, error)
 	CreateOriginViaTicket(ticket *binaryuuid.UUID, username string, password string) error
-	GetOriginUserClaimerAndUUID(username string, password string) (*claimer.Claimer, *binaryuuid.UUID, error)
+	GetOriginUserClaim(username string, password string) (*claimer.Claimer, error)
 }
 
 type OriginAPI struct {
@@ -146,7 +146,7 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 		return
 	}
 
-	claimer, uuid, err := o.DB.GetOriginUserClaimerAndUUID(form.Username, form.Password)
+	claimer, err := o.DB.GetOriginUserClaim(form.Username, form.Password)
 	if err != nil {
 		ctx.Status(http.StatusUnauthorized)
 		logger.ErrorWithCTX(ctx, "get origin user", err)
@@ -161,7 +161,6 @@ func (o *OriginAPI) LoginHandler(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
-		"user_uuid":     uuid.String(),
 		"access_token":  tokenString,
 		"refresh_token": refreshToken,
 	})
