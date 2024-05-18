@@ -32,6 +32,7 @@ type database interface {
 
 	Comment(claimer *claimer.Claimer, articleId *binaryuuid.UUID, comment *string) error
 	GetComments(claimer *claimer.Claimer, articleId *binaryuuid.UUID, offset uint, limit uint) (*[]model.ArticleCommentAPI, error)
+	GetHeartState(claimer *claimer.Claimer, articleUUID *binaryuuid.UUID) (bool, error)
 	DoHeart(claimer *claimer.Claimer, aritcleId *binaryuuid.UUID, action int) error
 	CountHeart(claimer *claimer.Claimer, articleId *binaryuuid.UUID) (uint64, error)
 }
@@ -266,7 +267,7 @@ func (a *ArticleAPI) PostCommentHandler(ctx *gin.Context) {
 	claimer := api.MustGetClaimer(ctx)
 
 	if err := a.d.Comment(claimer, &articleId, &form.Comment); err != nil {
-		ctx.Status(http.StatusBadRequest)
+		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "comment error", err)
 		return
 	}
@@ -278,8 +279,8 @@ type getCommentsHandlerUri struct {
 }
 
 type getCommentsHandlerForm struct {
-	Offset uint `form:"offset" binding:"min=0"`
-	Limit  uint `form:"limit" binding:"min=1, max=64"`
+	Offset uint `form:"offset,default=0" binding:"min=0"`
+	Limit  uint `form:"limit,default=16" binding:"min=1,max=64"`
 }
 
 func (a *ArticleAPI) GetCommentsHandler(ctx *gin.Context) {
@@ -365,5 +366,30 @@ func (a *ArticleAPI) GetHeartCountHandler(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, &gin.H{
 		"counts": heartCounts,
+	})
+}
+
+type getHeartStateHandlerUri = postCommentHandlerUri
+
+func (a *ArticleAPI) GetHeartStateHandler(ctx *gin.Context) {
+	uri := &getHeartStateHandlerUri{}
+	if err := ctx.BindUri(uri); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind uri", err)
+		return
+	}
+
+	claimer := api.MustGetClaimer(ctx)
+	articleUUID := binaryuuid.MustParse(uri.ArticleId)
+
+	heart, err := a.d.GetHeartState(claimer, &articleUUID)
+	if err != nil {
+		ctx.Status(http.StatusNotFound)
+		logger.ErrorWithCTX(ctx, "get heart state", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &gin.H{
+		"heart": heart,
 	})
 }

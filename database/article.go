@@ -118,9 +118,9 @@ type ArticleOwner struct {
 func getArticleOwner(tx *gorm.DB, linkId *binaryuuid.UUID) (*ArticleOwner, error) {
 	owner := &ArticleOwner{}
 	err := tx.
-			Model(&model.Article{}).
+		Model(&model.Article{}).
 		Select("id, user_id").
-			Where("link_uuid = ?", linkId).
+		Where("link_uuid = ?", linkId).
 		First(&owner).Error
 	return owner, err
 }
@@ -280,6 +280,37 @@ func (d *DB) Comment(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUID, c
 			Comment:   *comment,
 		}).Error
 	})
+}
+
+func (d *DB) GetHeartState(claimer *claimer.Claimer, articleUUID *binaryuuid.UUID) (bool, error) {
+	var state bool = false
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		articleOwner, err := getArticleOwner(tx, articleUUID)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.Id)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
+		}
+		return tx.
+			Model(&model.ArticleHeart{}).
+			Select("count(*)>0").
+			Where("article_id = ? AND user_id = ?", articleOwner.Id, claimerId).
+			Find(&state).
+			Error
+	})
+	return state, err
 }
 
 func (d *DB) DoHeart(claimer *claimer.Claimer, articleUUID *binaryuuid.UUID, action int) error {

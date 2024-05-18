@@ -48,7 +48,9 @@ One of following options
 - mock
   |Name|value|property|
   |---|---|---|
+  |type|cli|config how to process when email verify|
 
+  If "cli", print on command line, else, nothing  
   This option for testing other functions
 
 - ses
