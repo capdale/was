@@ -118,9 +118,9 @@ type ArticleOwner struct {
 func getArticleOwner(tx *gorm.DB, linkId *binaryuuid.UUID) (*ArticleOwner, error) {
 	owner := &ArticleOwner{}
 	err := tx.
-			Model(&model.Article{}).
+		Model(&model.Article{}).
 		Select("id, user_id").
-			Where("link_uuid = ?", linkId).
+		Where("link_uuid = ?", linkId).
 		First(&owner).Error
 	return owner, err
 }
