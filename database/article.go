@@ -282,6 +282,37 @@ func (d *DB) Comment(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUID, c
 	})
 }
 
+func (d *DB) GetHeartState(claimer *claimer.Claimer, articleUUID *binaryuuid.UUID) (bool, error) {
+	var state bool = false
+	err := d.DB.Transaction(func(tx *gorm.DB) error {
+		claimerId, err := getUserIdByClaimer(tx, claimer)
+		if err != nil {
+			return err
+		}
+
+		articleOwner, err := getArticleOwner(tx, articleUUID)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.Id)
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return ErrInvalidPermission
+		}
+		return tx.
+			Model(&model.ArticleHeart{}).
+			Select("count(*)>0").
+			Where("article_id = ? AND user_id = ?", articleOwner.Id, claimerId).
+			Find(&state).
+			Error
+	})
+	return state, err
+}
+
 func (d *DB) DoHeart(claimer *claimer.Claimer, articleUUID *binaryuuid.UUID, action int) error {
 	if action != 0 && action != 1 {
 		return ErrInvalidInput
