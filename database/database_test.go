@@ -7,7 +7,6 @@ import (
 
 	"github.com/capdale/was/config"
 	"github.com/capdale/was/test"
-	"github.com/capdale/was/types/binaryuuid"
 	"github.com/capdale/was/types/claimer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -42,8 +41,7 @@ type TestAccount struct {
 	Email    string
 	Username string
 	Password string
-	Claimer  *claimer.Claimer
-	Id       *binaryuuid.UUID
+	Claim    *claimer.Claimer
 }
 
 var num = 0
@@ -54,12 +52,14 @@ func (s *DatabaseSuite) MustCreateAccount() *TestAccount {
 	password := "Testtest1234!@"
 	ticket, _ := s.d.CreateTicketByEmail(email)
 	s.d.CreateOriginViaTicket(ticket, username, password)
-	claimer, uuid, _ := s.d.GetOriginUserClaimerAndUUID(username, password)
+	claimer, _ := s.d.GetOriginUserClaim(username, password)
+
+	num += 1
+
 	return &TestAccount{
 		Email:    email,
 		Username: username,
 		Password: password,
-		Claimer:  claimer,
-		Id:       uuid,
+		Claim:    claimer,
 	}
 }

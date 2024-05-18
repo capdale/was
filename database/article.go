@@ -125,7 +125,7 @@ func getArticleOwner(tx *gorm.DB, linkId *binaryuuid.UUID) (*ArticleOwner, error
 	return owner, err
 }
 
-func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
+func (d *DB) GetArticleLinkIdsByUsername(claimer *claimer.Claimer, username *string, offset int, limit int) (*[]*binaryuuid.UUID, error) {
 	if offset < 0 || limit < 1 || limit > 64 {
 		return nil, ErrInvalidInput
 	}
@@ -137,7 +137,7 @@ func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *bin
 			return err
 		}
 
-		userId, err := getUserIdByUUID(tx, userUUID)
+		userId, err := getUserIdByName(tx, username)
 		if err != nil {
 			return err
 		}
@@ -243,7 +243,7 @@ func (d *DB) GetComments(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUI
 		if err := tx.
 			Model(&model.ArticleComment{}).
 			Joins("JOIN users ON article_comments.user_id == users.id").
-			Select("users.uuid, article_comments.comment").
+			Select("users.username, article_comments.comment").
 			Where("article_id = ?", articleOwner.Id).
 			Find(&comments).Error; err != nil {
 			return err

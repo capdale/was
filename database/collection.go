@@ -7,10 +7,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func (d *DB) GetUserCollectionUUIDs(targetUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error) {
+func (d *DB) GetUserCollectionUUIDs(targetname *string, offset int, limit int) (*[]binaryuuid.UUID, error) {
 	collections := []model.Collection{}
 	if err := d.DB.Transaction(func(tx *gorm.DB) error {
-		claimerId, err := getUserIdByUUID(tx, targetUUID)
+		claimerId, err := getUserIdByName(tx, targetname)
 		if err != nil {
 			return err
 		}

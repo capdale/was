@@ -13,14 +13,14 @@ var (
 	ErrInvalidDetailType = errors.New("error invalid detail type")
 )
 
-func (d *DB) CreateReportUser(claimer *claimer.Claimer, targetUUID *binaryuuid.UUID, detailType int, description string) error {
+func (d *DB) CreateReportUser(claimer *claimer.Claimer, targetname *string, detailType int, description string) error {
 	return d.DB.Transaction(func(tx *gorm.DB) error {
 		issuerId, err := getUserIdByClaimer(tx, claimer)
 		if err != nil {
 			return err
 		}
 
-		targetId, err := getUserIdByUUID(tx, targetUUID)
+		targetId, err := getUserIdByName(tx, targetname)
 		if err != nil {
 			return err
 		}

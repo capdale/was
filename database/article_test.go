@@ -19,7 +19,7 @@ func (s *DatabaseSuite) TestAnonymousCreateArticle() {
 }
 func (s *DatabaseSuite) TestCreateArticle() {
 	account := s.MustCreateAccount()
-	claimer := account.Claimer
+	claimer := account.Claim
 
 	randomUUID, _ := binaryuuid.NewRandom()
 	collections := &[]binaryuuid.UUID{randomUUID}
@@ -30,14 +30,14 @@ func (s *DatabaseSuite) TestCreateArticle() {
 
 func (s *DatabaseSuite) TestCommentArticle() {
 	account := s.MustCreateAccount()
-	claimer := account.Claimer
-	userId := account.Id
+	claimer := account.Claim
+	username := account.Username
 
 	randomUUID, _ := binaryuuid.NewRandom()
 	collections := &[]binaryuuid.UUID{randomUUID}
 	order := &[]uint8{1}
 	s.d.CreateNewArticle(claimer, "title", "content", collections, collections, order)
-	linkIds, _ := s.d.GetArticleLinkIdsByUserUUID(claimer, userId, 0, 1)
+	linkIds, _ := s.d.GetArticleLinkIdsByUsername(claimer, &username, 0, 1)
 	linkUUID := (*linkIds)[0]
 
 	comment := "test comment"
@@ -51,14 +51,14 @@ func (s *DatabaseSuite) TestCommentArticle() {
 
 func (s *DatabaseSuite) TestHeartArticle() {
 	account := s.MustCreateAccount()
-	claimer := account.Claimer
-	userId := account.Id
+	claimer := account.Claim
+	username := account.Username
 
 	randomUUID, _ := binaryuuid.NewRandom()
 	collections := &[]binaryuuid.UUID{randomUUID}
 	order := &[]uint8{1}
 	s.d.CreateNewArticle(claimer, "title", "content", collections, collections, order)
-	linkIds, _ := s.d.GetArticleLinkIdsByUserUUID(claimer, userId, 0, 1)
+	linkIds, _ := s.d.GetArticleLinkIdsByUsername(claimer, &username, 0, 1)
 	linkUUID := (*linkIds)[0]
 
 	err := s.d.DoHeart(claimer, linkUUID, 1)
