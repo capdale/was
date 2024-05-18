@@ -23,7 +23,7 @@ type storage interface {
 }
 
 type database interface {
-	GetUserCollectionUUIDs(targetUUID *binaryuuid.UUID, offset int, limit int) (*[]binaryuuid.UUID, error)
+	GetUserCollectionUUIDs(targetname *string, offset int, limit int) (*[]binaryuuid.UUID, error)
 	GetCollectionByUUID(claimer *claimer.Claimer, collectionUUID *binaryuuid.UUID) (*Collection, error)
 	CreateCollection(claimer *claimer.Claimer, collection *Collection, collectionUUID binaryuuid.UUID) error
 	HasAccessPermissionCollection(claimer *claimer.Claimer, collectionUUID binaryuuid.UUID) error
@@ -45,7 +45,7 @@ func New(database database, storage storage) *CollectAPI {
 type Collection = model.CollectionAPI
 
 type getUserCollectionsUri struct {
-	TargetUUID string `uri:"user" binding:"required,uuid"`
+	Targetname string `uri:"username" binding:"required,uuid"`
 }
 
 type getUserCollectionform struct {
@@ -69,8 +69,7 @@ func (a *CollectAPI) GetUserCollectections(ctx *gin.Context) {
 		return
 	}
 
-	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
-	collections, err := a.DB.GetUserCollectionUUIDs(&targetUUID, *form.Offset, *form.Limit)
+	collections, err := a.DB.GetUserCollectionUUIDs(&uri.Targetname, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "db get collections", err)

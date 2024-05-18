@@ -130,7 +130,6 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"user_uuid":     user.UUID.String(),
 		"access_token":  tokenString,
 		"refresh_token": refreshToken,
 	})

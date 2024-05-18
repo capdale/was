@@ -24,7 +24,7 @@ type storage interface {
 
 type database interface {
 	IsCollectionOwned(claimer *claimer.Claimer, collectionUUIDs *[]binaryuuid.UUID) error
-	GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	GetArticleLinkIdsByUsername(claimer *claimer.Claimer, username *string, offset int, limit int) (*[]*binaryuuid.UUID, error)
 	GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(claimer *claimer.Claimer, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
 	HasAccessPermissionArticleImage(claimer *claimer.Claimer, imageUUID *binaryuuid.UUID) (bool, error)
@@ -131,7 +131,7 @@ func (a *ArticleAPI) CreateArticleHandler(ctx *gin.Context) {
 }
 
 type getArticleLinksUri struct {
-	TargetUUID string `uri:"uuid" binding:"required,uuid"`
+	Targetname string `uri:"targetname" binding:"required"`
 }
 
 type getArticleLinksForm struct {
@@ -152,9 +152,8 @@ func (a *ArticleAPI) GetUserArticleLinksHandler(ctx *gin.Context) {
 		return
 	}
 
-	targetUUID := binaryuuid.MustParse(uri.TargetUUID)
 	claimerAuthUUID := api.GetClaimer(ctx)
-	articles, err := a.d.GetArticleLinkIdsByUserUUID(claimerAuthUUID, &targetUUID, form.Offset, form.Limit)
+	articles, err := a.d.GetArticleLinkIdsByUsername(claimerAuthUUID, &uri.Targetname, form.Offset, form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "query linkids by user id", err)

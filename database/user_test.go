@@ -1,7 +1,6 @@
 package database
 
 import (
-	"github.com/capdale/was/types/binaryuuid"
 	"github.com/capdale/was/types/claimer"
 )
 
@@ -10,6 +9,6 @@ func (s *DatabaseSuite) createTestAccount(email string, username string, passwor
 	s.d.CreateOriginViaTicket(ticket, username, password)
 }
 
-func (s *DatabaseSuite) loginAccount(username string, password string) (*claimer.Claimer, *binaryuuid.UUID, error) {
-	return s.d.GetOriginUserClaimerAndUUID(username, password)
+func (s *DatabaseSuite) loginAccount(username string, password string) (*claimer.Claimer, error) {
+	return s.d.GetOriginUserClaim(username, password)
 }
