@@ -7,7 +7,6 @@ import (
 	"github.com/capdale/was/api"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
-	"github.com/capdale/was/model"
 
 	"github.com/capdale/was/types/binaryuuid"
 	"github.com/capdale/was/types/claimer"
@@ -41,7 +40,6 @@ func New(database database) *SocialAPI {
 
 type getFollowersHandlerUri struct {
 	Targetname string `uri:"targetname" binding:"required"`
-	Targetname string `uri:"targetname" binding:"required"`
 }
 
 type getFollowersHandlerForm struct {
@@ -64,7 +62,6 @@ func (a *SocialAPI) GetFollowersHandler(ctx *gin.Context) {
 	}
 
 	claimer := api.GetClaimer(ctx)
-	followers, err := a.DB.GetFollowers(claimer, &uri.Targetname, *form.Offset, *form.Limit)
 	followers, err := a.DB.GetFollowers(claimer, &uri.Targetname, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
@@ -94,7 +91,6 @@ func (a *SocialAPI) GetFollowingsHandler(ctx *gin.Context) {
 	}
 
 	claimer := api.GetClaimer(ctx)
-	followings, err := a.DB.GetFollowings(claimer, &uri.Targetname, *form.Offset, *form.Limit)
 	followings, err := a.DB.GetFollowings(claimer, &uri.Targetname, *form.Offset, *form.Limit)
 	if err != nil {
 		ctx.Status(http.StatusNotFound)
@@ -142,7 +138,6 @@ func (a *SocialAPI) GetFollowerRelationHandler(ctx *gin.Context) {
 	claimer := api.MustGetClaimer(ctx)
 
 	isFollower, err := a.DB.IsFollower(claimer, &uri.Targetname)
-	isFollower, err := a.DB.IsFollower(claimer, &uri.Targetname)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "query follower", err)
@@ -163,7 +158,6 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 
 	claimer := api.MustGetClaimer(ctx)
 	isFollowing, err := a.DB.IsFollowing(claimer, &uri.Targetname)
-	isFollowing, err := a.DB.IsFollowing(claimer, &uri.Targetname)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "query following", err)
@@ -173,7 +167,6 @@ func (a *SocialAPI) GetFollowingRelationHandler(ctx *gin.Context) {
 }
 
 type deleteFollowerUri struct {
-	Targetname string `uri:"targetname" binding:"required"`
 	Targetname string `uri:"targetname" binding:"required"`
 }
 
@@ -187,7 +180,6 @@ func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
 
 	claimer := api.MustGetClaimer(ctx)
 	if err := a.DB.RemoveFollower(claimer, &uri.Targetname); err != nil {
-	if err := a.DB.RemoveFollower(claimer, &uri.Targetname); err != nil {
 		ctx.Status(http.StatusNotAcceptable)
 		logger.ErrorWithCTX(ctx, "remove follower", err)
 		return
@@ -197,7 +189,6 @@ func (a *SocialAPI) DeleteFollowerHandler(ctx *gin.Context) {
 
 // duplicated, but remain (different function)
 type getRelationHandlerUri struct {
-	Targetname string `uri:"targetname" binding:"required"`
 	Targetname string `uri:"targetname" binding:"required"`
 }
 
@@ -213,14 +204,12 @@ func (a *SocialAPI) GetRelationHandler(ctx *gin.Context) {
 
 	// [TODO] integrate to database.GetRelationship for resource
 	isFollower, err := a.DB.IsFollower(claimer, &uri.Targetname)
-	isFollower, err := a.DB.IsFollower(claimer, &uri.Targetname)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
 		logger.ErrorWithCTX(ctx, "query follower", err)
 		return
 	}
 
-	isFollowing, err := a.DB.IsFollowing(claimer, &uri.Targetname)
 	isFollowing, err := a.DB.IsFollowing(claimer, &uri.Targetname)
 	if err != nil {
 		ctx.Status(http.StatusInternalServerError)
@@ -246,7 +235,6 @@ func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
 
 	claimer := api.MustGetClaimer(ctx)
 	if err := a.DB.RemoveFollowing(claimer, &uri.Targetname); err != nil {
-	if err := a.DB.RemoveFollowing(claimer, &uri.Targetname); err != nil {
 		ctx.Status(http.StatusNotAcceptable)
 		logger.ErrorWithCTX(ctx, "remove following", err)
 		return
@@ -255,7 +243,6 @@ func (a *SocialAPI) DeleteFollowingHandler(ctx *gin.Context) {
 }
 
 type acceptRequestFollowRequestUri struct {
-	Code string `uri:"code" binding:"required,uuid"`
 	Code string `uri:"code" binding:"required,uuid"`
 }
 
@@ -268,9 +255,7 @@ func (a *SocialAPI) AcceptRequestFollowHandler(ctx *gin.Context) {
 	}
 
 	code := binaryuuid.MustParse(uri.Code)
-	code := binaryuuid.MustParse(uri.Code)
 	claimer := api.MustGetClaimer(ctx)
-	if err := a.DB.AcceptRequestFollow(claimer, &code); err != nil {
 	if err := a.DB.AcceptRequestFollow(claimer, &code); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "accept request follow", err)
@@ -291,9 +276,7 @@ func (a *SocialAPI) RejectRequestFollowHandler(ctx *gin.Context) {
 	}
 
 	code := binaryuuid.MustParse(uri.Code)
-	code := binaryuuid.MustParse(uri.Code)
 	claimer := api.MustGetClaimer(ctx)
-	if err := a.DB.RejectRequestFollow(claimer, &code); err != nil {
 	if err := a.DB.RejectRequestFollow(claimer, &code); err != nil {
 		ctx.Status(http.StatusBadGateway)
 		logger.ErrorWithCTX(ctx, "reject request follow", err)
