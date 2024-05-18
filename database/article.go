@@ -80,19 +80,31 @@ func (d *DB) CreateNewArticle(claimerUUID *claimer.Claimer, title string, conten
 func (d *DB) GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*model.ArticleAPI, error) {
 	article := &model.ArticleAPI{}
 	err := d.DB.Transaction(func(tx *gorm.DB) error {
-		ok, err := hasPermissionArticle(tx, claimer, &linkId)
+		claimerId, err := getUserIdByClaimer(tx, claimer)
 		if err != nil {
 			return err
 		}
+
+		articleOwner, err := getArticleOwner(tx, &linkId)
+		if err != nil {
+			return err
+		}
+
+		ok, err := hasQueryPermission(tx, claimerId, articleOwner.UserId)
+		if err != nil {
+			return err
+		}
+
 		if !ok {
 			return ErrInvalidPermission
 		}
 
 		return tx.
 			Model(&model.Article{}).
-			Preload("ArticleCollections").
-			Preload("ArticleImages").
-			Where("link_uuid = ?", linkId).
+			Preload("Collections").
+			Preload("Images").
+			Preload("Meta").
+			Where(articleOwner.Id).
 			First(article).Error
 	})
 	return article, err
