@@ -266,7 +266,7 @@ func (a *ArticleAPI) PostCommentHandler(ctx *gin.Context) {
 	claimer := api.MustGetClaimer(ctx)
 
 	if err := a.d.Comment(claimer, &articleId, &form.Comment); err != nil {
-		ctx.Status(http.StatusBadRequest)
+		ctx.Status(http.StatusNotFound)
 		logger.ErrorWithCTX(ctx, "comment error", err)
 		return
 	}
@@ -278,8 +278,8 @@ type getCommentsHandlerUri struct {
 }
 
 type getCommentsHandlerForm struct {
-	Offset uint `form:"offset" binding:"min=0"`
-	Limit  uint `form:"limit" binding:"min=1, max=64"`
+	Offset uint `form:"offset,default=0" binding:"min=0"`
+	Limit  uint `form:"limit,default=16" binding:"min=1,max=64"`
 }
 
 func (a *ArticleAPI) GetCommentsHandler(ctx *gin.Context) {
