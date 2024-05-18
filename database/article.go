@@ -110,28 +110,19 @@ func (d *DB) GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*mode
 	return article, err
 }
 
-func hasPermissionArticle(tx *gorm.DB, claimer *claimer.Claimer, linkId *binaryuuid.UUID) (bool, error) {
-	var ok bool = false
-	err := tx.Transaction(func(tx *gorm.DB) error {
-		var ownerId uint64
-		var claimerId uint64
-		var err error
-		if err = tx.
-			Model(&model.Article{}).
-			Select("user_id").
-			Where("link_uuid = ?", linkId).
-			First(&ownerId).Error; err != nil {
-			return err
-		}
+type ArticleOwner struct {
+	Id     uint64
+	UserId uint64
+}
 
-		claimerId, err = getUserIdByClaimer(tx, claimer)
-		if err != nil {
-			return err
-		}
-		ok, err = hasQueryPermission(tx, claimerId, ownerId)
-		return err
-	})
-	return ok, err
+func getArticleOwner(tx *gorm.DB, linkId *binaryuuid.UUID) (*ArticleOwner, error) {
+	owner := &ArticleOwner{}
+	err := tx.
+			Model(&model.Article{}).
+		Select("id, user_id").
+			Where("link_uuid = ?", linkId).
+		First(&owner).Error
+	return owner, err
 }
 
 func (d *DB) GetArticleLinkIdsByUserUUID(claimer *claimer.Claimer, userUUID *binaryuuid.UUID, offset int, limit int) (*[]*binaryuuid.UUID, error) {
