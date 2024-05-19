@@ -242,7 +242,7 @@ func (d *DB) GetComments(claimer *claimer.Claimer, articleLinkId *binaryuuid.UUI
 
 		if err := tx.
 			Model(&model.ArticleComment{}).
-			Joins("JOIN users ON article_comments.user_id == users.id").
+			Joins("JOIN users ON article_comments.user_id = users.id").
 			Select("users.username, article_comments.comment").
 			Where("article_id = ?", articleOwner.Id).
 			Find(&comments).Error; err != nil {
