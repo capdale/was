@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -28,6 +29,14 @@ func main() {
 		panic(err)
 	}
 	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()), zap.String("listen", config.Service.Address))
+
+	if config.Service.TLS != nil {
+		err := r.RunTLS(fmt.Sprintf(":%d", config.Service.TLS.Port), "server.pem", "server.key")
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
 
 	if strings.HasPrefix(config.Service.Address, "localhost") {
 		svr := http.Server{

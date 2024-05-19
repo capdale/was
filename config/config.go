@@ -28,9 +28,16 @@ type Config struct {
 }
 
 type Service struct {
+	TLS     *TLS   `yaml:"tls"`
 	Address string `yaml:"address"`
 	Cors    Cors   `yaml:"cors"`
 	Log     Log    `yaml:"log"`
+}
+
+type TLS struct {
+	Port int    `yaml:"port"`
+	Pem  string `yaml:"pem"`
+	Key  string `yaml:"key"`
 }
 
 type Cors struct {
