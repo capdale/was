@@ -43,8 +43,8 @@ func (a *Article) BeforeCreate(tx *gorm.DB) error {
 
 type ArticleMeta struct {
 	ArticleId  uint64 `gorm:"index" json:"-"`
-	ViewCount  uint64
-	HeartCount uint64
+	ViewCount  uint64 `json:"viewcount"`
+	HeartCount uint64 `json:"heartcount"`
 }
 
 type ArticleHeart struct {
