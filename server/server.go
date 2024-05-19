@@ -8,6 +8,7 @@ import (
 	articleAPI "github.com/capdale/was/api/article"
 	authapi "github.com/capdale/was/api/auth"
 	githubAuth "github.com/capdale/was/api/auth/github"
+	kakaoAuth "github.com/capdale/was/api/auth/kakao"
 	originAPI "github.com/capdale/was/api/auth/origin"
 	collect "github.com/capdale/was/api/collection"
 	reportAPI "github.com/capdale/was/api/report"
@@ -30,6 +31,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
+	"golang.org/x/oauth2/kakao"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -128,6 +130,13 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			Scopes:       []string{"user:email"},
 			Endpoint:     github.Endpoint,
 		})
+		kakaoAuth := kakaoAuth.New(d, auth, &oauth2.Config{
+			ClientID:     config.Oauth.Kakao.Id,
+			ClientSecret: config.Oauth.Kakao.Secret,
+			RedirectURL:  config.Oauth.Kakao.Redirect,
+			Scopes:       []string{"kakao_account.email"},
+			Endpoint:     kakao.Endpoint,
+		})
 		authRouter.POST("/regist-email", originAPI.CreateEmailTicketHandler)
 		authRouter.POST("/regist", originAPI.RegisterTicketHandler)
 		authRouter.POST("/login", originAPI.LoginHandler)
@@ -135,6 +144,11 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		{
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
+		}
+		kakaoAuthRouter := authRouter.Group("/kakao").Use(sessions.Sessions("state", st))
+		{
+			kakaoAuthRouter.GET("/login", kakaoAuth.LoginHandler)
+			kakaoAuthRouter.GET("/callback", kakaoAuth.CallbackHandler)
 		}
 		authRouter.DELETE("/", auth.AuthorizeRequiredMiddleware(), authAPI.DeleteUserAccountHandler)
 

@@ -11,6 +11,7 @@ import (
 const (
 	AccountTypeOrigin = 0
 	AccountTypeGithub = 1
+	AccountTypeKakao  = 2
 )
 
 type User struct {

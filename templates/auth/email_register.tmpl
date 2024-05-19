@@ -11,7 +11,7 @@
       <div class="logo">
         <img
           class="logo-image"
-          src="https://raw.githubusercontent.com/capdale/.github/main/profile/imgs/logo.png"
+          src="https://api.themodak.com/static/images/logo.png"
           alt=""
         />
       </div>
@@ -211,12 +211,13 @@
       const ticket = form.ticket.value;
       const username = form.username.value;
       const password = form.password.value;
+      console.log(ticket);
 
       return await fetch(form.action, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-        },  
+        },
         cache: "no-cache",
         body: JSON.stringify({
           ticket: ticket,

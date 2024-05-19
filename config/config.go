@@ -94,9 +94,16 @@ type Key struct {
 
 type Oauth struct {
 	Github *Github `yaml:"github,omitempty"`
+	Kakao  *Kakao  `yaml:"kakao, omitempty"`
 }
 
 type Github struct {
+	Id       string `yaml:"id"`
+	Secret   string `yaml:"secret"`
+	Redirect string `yaml:"redirect"`
+}
+
+type Kakao struct {
 	Id       string `yaml:"id"`
 	Secret   string `yaml:"secret"`
 	Redirect string `yaml:"redirect"`

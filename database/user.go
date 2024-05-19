@@ -57,6 +57,22 @@ func (d *DB) CreateWithGithub(username string, email string) (*model.User, error
 	return user, err
 }
 
+func (d *DB) CreateWithKakao(username string, email string) (*model.User, error) {
+	user := &model.User{
+		Username:    username,
+		Email:       email,
+		AccountType: model.AccountTypeKakao,
+		SocialUser: &model.SocialUser{
+			AccountType: model.AccountTypeKakao,
+		},
+		UserDisplayType: &model.UserDisplayType{
+			IsPrivate: false,
+		},
+	}
+	err := d.DB.Create(user).Error
+	return user, err
+}
+
 func getUserIdByName(tx *gorm.DB, username *string) (uint64, error) {
 	if username == nil {
 		return 0, nil
