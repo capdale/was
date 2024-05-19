@@ -134,7 +134,7 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 			ClientID:     config.Oauth.Kakao.Id,
 			ClientSecret: config.Oauth.Kakao.Secret,
 			RedirectURL:  config.Oauth.Kakao.Redirect,
-			Scopes:       []string{"kakao_account.email"},
+			Scopes:       []string{"account_email"},
 			Endpoint:     kakao.Endpoint,
 		})
 		authRouter.POST("/regist-email", originAPI.CreateEmailTicketHandler)
