@@ -297,7 +297,7 @@ func (a *ArticleAPI) GetCommentsHandler(ctx *gin.Context) {
 		return
 	}
 
-	claimer := api.MustGetClaimer(ctx)
+	claimer := api.GetClaimer(ctx)
 	linkId := binaryuuid.MustParse(uri.ArticleId)
 	comments, err := a.d.GetComments(claimer, &linkId, form.Offset, form.Limit)
 	if err != nil {
