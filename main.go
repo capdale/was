@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()))
+	logger.Logger.Info("Server Start", zap.Time("time", time.Now().Local()), zap.String("listen", config.Service.Address))
 
 	if strings.HasPrefix(config.Service.Address, "localhost") {
 		svr := http.Server{
