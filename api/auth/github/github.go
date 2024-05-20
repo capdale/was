@@ -131,6 +131,7 @@ func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
+		"username":      user.Username,
 		"access_token":  tokenString,
 		"refresh_token": refreshToken,
 	})
