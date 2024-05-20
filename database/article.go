@@ -125,6 +125,24 @@ func getArticleOwner(tx *gorm.DB, linkId *binaryuuid.UUID) (*ArticleOwner, error
 	return owner, err
 }
 
+func (d *DB) GetPublicArticleLinks(offset int, limit int) (*[]*binaryuuid.UUID, error) {
+	if offset < 0 || limit < 1 || limit > 64 {
+		return nil, ErrInvalidInput
+	}
+
+	links := []*binaryuuid.UUID{}
+	err := d.DB.
+		Model(&model.Article{}).
+		Select("articles.link_uuid").
+		Joins("left JOIN users ON users.id = articles.user_id").
+		Joins("JOIN user_display_types ON users.id = user_display_types.user_id AND user_display_types.is_private = ?", false).
+		Offset(offset).
+		Limit(limit).
+		Order("articles.create_at DESC").
+		Find(&links).Error
+	return &links, err
+}
+
 func (d *DB) GetArticleLinkIdsByUsername(claimer *claimer.Claimer, username *string, offset int, limit int) (*[]*binaryuuid.UUID, error) {
 	if offset < 0 || limit < 1 || limit > 64 {
 		return nil, ErrInvalidInput
