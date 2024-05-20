@@ -57,7 +57,7 @@ func getEmailFromBody(body *[]byte) (string, error) {
 		return "", err
 	}
 	if !(info.Account.IsEmailValid || info.Account.IsEmailVerified) {
-		return "", authapi.ErrNoValidEmail
+		return "", fmt.Errorf("%w, email valid: %v, verified: %v", authapi.ErrNoValidEmail, info.Account.IsEmailValid, info.Account.IsEmailVerified)
 	}
 	return info.Account.Email, nil
 }
