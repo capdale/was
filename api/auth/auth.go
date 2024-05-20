@@ -8,7 +8,6 @@ import (
 	"github.com/capdale/was/auth"
 	baselogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/types/claimer"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,16 +39,6 @@ func New(database database, auth *auth.Auth) *AuthAPI {
 		DB:   database,
 		Auth: auth,
 	}
-}
-
-func CheckState(ctx *gin.Context) error {
-	session := sessions.Default(ctx)
-	state := session.Get("state")
-	if state == nil {
-		return errors.New("state not found")
-	}
-	session.Clear()
-	return nil
 }
 
 func (a *AuthAPI) SetBlacklistHandler(ctx *gin.Context) {

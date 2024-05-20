@@ -3,6 +3,7 @@ package githubAuth
 import (
 	"encoding/base64"
 	"net/http"
+	"time"
 
 	"github.com/capdale/was/api"
 	authapi "github.com/capdale/was/api/auth"
@@ -10,7 +11,6 @@ import (
 	baseLogger "github.com/capdale/was/logger"
 	"github.com/capdale/was/model"
 	"github.com/capdale/was/types/claimer"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -28,27 +28,28 @@ type database interface {
 	CreateWithGithub(username string, email string) (*model.User, error)
 }
 
+type state interface {
+	SetState(state string, expired time.Duration) error
+	PopState(state string) error
+}
+
 type GithubAuth struct {
 	DB          database
 	Auth        *auth.Auth
+	State       state
 	OAuthConfig *oauth2.Config
 }
 
-func New(database database, auth *auth.Auth, oauthConfig *oauth2.Config) *GithubAuth {
+func New(database database, auth *auth.Auth, state state, oauthConfig *oauth2.Config) *GithubAuth {
 	return &GithubAuth{
 		DB:          database,
 		Auth:        auth,
+		State:       state,
 		OAuthConfig: oauthConfig,
 	}
 }
 
 func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
-
-	session := sessions.Default(ctx)
-	session.Options(sessions.Options{
-		Path:   "/auth",
-		MaxAge: 900,
-	})
 	rand32, err := auth.RandToken(32)
 	if err != nil {
 		api.BasicInternalServerError(ctx)
@@ -56,8 +57,7 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 		return
 	}
 	state := base64.StdEncoding.EncodeToString(*rand32)
-	session.Set("state", state)
-	session.Save()
+	g.State.SetState(state, time.Minute*10)
 	if ctx.Query("type") == "json" {
 		ctx.JSON(http.StatusOK, gin.H{"url": g.OAuthConfig.AuthCodeURL(state)})
 		return
@@ -66,7 +66,8 @@ func (g *GithubAuth) LoginHandler(ctx *gin.Context) {
 }
 
 func (g *GithubAuth) CallbackHandler(ctx *gin.Context) {
-	err := authapi.CheckState(ctx)
+	state := ctx.Query("state")
+	err := g.State.PopState(state)
 	if err != nil {
 		api.BasicUnAuthorizedError(ctx)
 		logger.ErrorWithCTX(ctx, "cannot find state", err)
