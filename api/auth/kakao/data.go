@@ -3,6 +3,9 @@ package kakao
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 
 	authapi "github.com/capdale/was/api/auth"
 	"golang.org/x/oauth2"
@@ -18,22 +21,43 @@ type kakaoAccount struct {
 	Email           string `json:"email"`
 }
 
+func getUserEmailWithAccessToken(accessToken string) (string, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s?property_keys=[\"kakao_account.email\"]", userInfoEndpoint), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Set("Content-type", "application/x-www-form-urlencoded;charset=utf-8")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	return getEmailFromBody(&b)
+}
+
 func (k *KakaoAuth) getUserEmail(ctx context.Context, t *oauth2.Token) (string, error) {
 	client := k.OAuthConfig.Client(ctx, t)
 	body, err := authapi.GetBody(client, userInfoEndpoint)
 	if err != nil {
 		return "", err
 	}
+	return getEmailFromBody(&body)
+}
 
+func getEmailFromBody(body *[]byte) (string, error) {
 	info := &userInfo{}
-	err = json.Unmarshal(body, info)
-	if err != nil {
+	if err := json.Unmarshal(*body, info); err != nil {
 		return "", err
 	}
-
 	if !(info.Account.IsEmailValid || info.Account.IsEmailVerified) {
 		return "", authapi.ErrNoValidEmail
 	}
-
 	return info.Account.Email, nil
 }
