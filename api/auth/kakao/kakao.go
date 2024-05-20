@@ -2,6 +2,7 @@ package kakao
 
 import (
 	"encoding/base64"
+	"math/rand"
 	"net/http"
 
 	"github.com/capdale/was/api"
@@ -90,7 +91,7 @@ func (k *KakaoAuth) CallbackHandler(ctx *gin.Context) {
 	user, err := k.getUserFromSocialByEmail(email)
 
 	if err == gorm.ErrRecordNotFound {
-		user, err = k.DB.CreateWithKakao("username", email)
+		user, err = k.DB.CreateWithKakao(RandStringRunes(8), email)
 		if err != nil {
 			api.BasicInternalServerError(ctx)
 			logger.ErrorWithCTX(ctx, "create kakao account", err)
@@ -130,4 +131,14 @@ func (k *KakaoAuth) getUserFromSocialByEmail(email string) (user *model.User, er
 		return user, authapi.ErrAlreayExistEmail
 	}
 	return
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
