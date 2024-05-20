@@ -123,14 +123,14 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	{
 		authRouter.POST("/blacklist", auth.AuthorizeRequiredMiddleware(), authAPI.SetBlacklistHandler)
 		authRouter.POST("/refresh", authAPI.RefreshTokenHandler)
-		githubAuth := githubAuth.New(d, auth, &oauth2.Config{
+		githubAuth := githubAuth.New(d, auth, store, &oauth2.Config{
 			ClientID:     config.Oauth.Github.Id,
 			ClientSecret: config.Oauth.Github.Secret,
 			RedirectURL:  config.Oauth.Github.Redirect,
 			Scopes:       []string{"user:email"},
 			Endpoint:     github.Endpoint,
 		})
-		kakaoAuth := kakaoAuth.New(d, auth, &oauth2.Config{
+		kakaoAuth := kakaoAuth.New(d, auth, store, &oauth2.Config{
 			ClientID:     config.Oauth.Kakao.Id,
 			ClientSecret: config.Oauth.Kakao.Secret,
 			RedirectURL:  config.Oauth.Kakao.Redirect,
