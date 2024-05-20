@@ -25,6 +25,7 @@ type storage interface {
 type database interface {
 	IsCollectionOwned(claimer *claimer.Claimer, collectionUUIDs *[]binaryuuid.UUID) error
 	GetArticleLinkIdsByUsername(claimer *claimer.Claimer, username *string, offset int, limit int) (*[]*binaryuuid.UUID, error)
+	GetPublicArticleLinks(offset int, limit int) (*[]*binaryuuid.UUID, error)
 	GetArticle(claimer *claimer.Claimer, linkId binaryuuid.UUID) (*model.ArticleAPI, error)
 	CreateNewArticle(claimer *claimer.Claimer, title string, content string, collectionUUIDs *[]binaryuuid.UUID, imageUUIDs *[]binaryuuid.UUID, collectionOrder *[]uint8) error
 	HasAccessPermissionArticleImage(claimer *claimer.Claimer, imageUUID *binaryuuid.UUID) (bool, error)
@@ -390,5 +391,30 @@ func (a *ArticleAPI) GetHeartStateHandler(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, &gin.H{
 		"heart": heart,
+	})
+}
+
+type getPublicArticlesHandlerForm struct {
+	Offset int `form:"offset,default=0" binding:"min=0"`
+	Limit  int `form:"limit,default=16" binding:"min=1,max=64"`
+}
+
+func (a *ArticleAPI) GetPublicArticlesHandler(ctx *gin.Context) {
+	form := &getPublicArticlesHandlerForm{}
+	if err := ctx.Bind(form); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind form", err)
+		return
+	}
+
+	links, err := a.d.GetPublicArticleLinks(form.Offset, form.Limit)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		logger.ErrorWithCTX(ctx, "get public articles", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &gin.H{
+		"links": links,
 	})
 }
