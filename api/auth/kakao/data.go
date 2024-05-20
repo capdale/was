@@ -23,7 +23,7 @@ type kakaoAccount struct {
 
 func getUserEmailWithAccessToken(accessToken string) (string, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s?property_keys=[\"kakao_account.email\"]", userInfoEndpoint), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s?property_keys=[\"kakao_account.email\"]", userInfoEndpoint), nil)
 	if err != nil {
 		return "", err
 	}

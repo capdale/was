@@ -64,7 +64,7 @@ func (k *KakaoAuth) LoginHandler(ctx *gin.Context) {
 }
 
 type loginWithAccessTokenForm struct {
-	AccessToken string `form:"access_token"`
+	AccessToken string `json:"access_token" form:"access_token" binding:"required"`
 }
 
 func (k *KakaoAuth) LoginWithAccessTokenHandler(ctx *gin.Context) {
