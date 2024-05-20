@@ -63,6 +63,59 @@ func (k *KakaoAuth) LoginHandler(ctx *gin.Context) {
 	ctx.Redirect(http.StatusFound, k.OAuthConfig.AuthCodeURL(state))
 }
 
+type loginWithAccessTokenForm struct {
+	AccessToken string `form:"access_token"`
+}
+
+func (k *KakaoAuth) LoginWithAccessTokenHandler(ctx *gin.Context) {
+	form := &loginWithAccessTokenForm{}
+	if err := ctx.Bind(form); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "bind form", err)
+		return
+	}
+
+	email, err := getUserEmailWithAccessToken(form.AccessToken)
+	if err != nil {
+		ctx.Status(http.StatusBadRequest)
+		logger.ErrorWithCTX(ctx, "get user email", err)
+		return
+	}
+
+	user, err := k.getUserFromSocialByEmail(email)
+
+	if err == gorm.ErrRecordNotFound {
+		user, err = k.DB.CreateWithKakao(RandStringRunes(8), email)
+		if err != nil {
+			api.BasicInternalServerError(ctx)
+			logger.ErrorWithCTX(ctx, "create kakao account", err)
+			return
+		}
+	} else if err == authapi.ErrAlreayExistEmail {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "email already used"})
+		logger.ErrorWithCTX(ctx, "email alreay exist", err)
+		return
+	} else if err != nil {
+		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "query social account by email", err)
+		return
+	}
+
+	userAgent := ctx.Request.UserAgent()
+	claimer := claimer.New(&user.AuthUUID)
+	tokenString, refreshToken, err := k.Auth.IssueToken(*claimer, &userAgent)
+	if err != nil {
+		api.BasicInternalServerError(ctx)
+		logger.ErrorWithCTX(ctx, "issue token", err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"access_token":  tokenString,
+		"refresh_token": refreshToken,
+	})
+}
+
 func (k *KakaoAuth) CallbackHandler(ctx *gin.Context) {
 	state := ctx.Query("state")
 	err := k.State.PopState(state)

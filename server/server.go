@@ -25,8 +25,6 @@ import (
 	"github.com/capdale/was/storage/s3"
 	"github.com/capdale/was/store"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -66,11 +64,6 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 	store, err := store.New(&config.Redis)
 	if err != nil {
 		return
-	}
-
-	st, err := redis.NewStore(10, "tcp", config.Redis.Address, config.Redis.Password, []byte(config.Key.SessionStateKey))
-	if err != nil {
-		return nil, err
 	}
 
 	var storage storage.Storage
@@ -140,14 +133,15 @@ func SetupRouter(config *config.Config) (r *gin.Engine, err error) {
 		authRouter.POST("/regist-email", originAPI.CreateEmailTicketHandler)
 		authRouter.POST("/regist", originAPI.RegisterTicketHandler)
 		authRouter.POST("/login", originAPI.LoginHandler)
-		githubAuthRouter := authRouter.Group("/github").Use(sessions.Sessions("state", st))
+		githubAuthRouter := authRouter.Group("/github")
 		{
 			githubAuthRouter.GET("/login", githubAuth.LoginHandler)
 			githubAuthRouter.GET("/callback", githubAuth.CallbackHandler)
 		}
-		kakaoAuthRouter := authRouter.Group("/kakao").Use(sessions.Sessions("state", st))
+		kakaoAuthRouter := authRouter.Group("/kakao")
 		{
 			kakaoAuthRouter.GET("/login", kakaoAuth.LoginHandler)
+			kakaoAuthRouter.POST("/login/token", kakaoAuth.LoginWithAccessTokenHandler)
 			kakaoAuthRouter.GET("/callback", kakaoAuth.CallbackHandler)
 		}
 		authRouter.DELETE("/", auth.AuthorizeRequiredMiddleware(), authAPI.DeleteUserAccountHandler)
