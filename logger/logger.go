@@ -26,7 +26,7 @@ func New(lumlog *lumberjack.Logger, isProduction bool, console bool) *zap.Logger
 	} else {
 		config = zap.NewDevelopmentEncoderConfig()
 	}
-	config.EncodeTime = zapcore.ISO8601TimeEncoder
+	config.EncodeTime = zapcore.RFC3339TimeEncoder
 
 	var zapCores []zapcore.Core
 
