@@ -2,6 +2,9 @@ name: Push test
 
 on:
   push:
+    path-ignore:
+      - 'docs/**'
+      - '.github/**'
     branches:
       - main
   pull_request:
