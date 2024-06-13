@@ -147,22 +147,26 @@ make docker-image-linux-arm64
 # tag arm64/was
 ```
 
+## log analysis (Go access)
+
+```console
+goaccess logs/app.log --log-format='{"ts":"%dT%f%^", "ip": "%h","status": "%s", "lantency": "%D", "user-agent": "%u", "path": "%U", "query": "%q"}' --date-format=%Y-%m-%d --time-format=%f
+```
+
 ## Security
+
 > [!WARNING]
 > This section explain how to setup secure server structure
 
-1. Database access   
-Dzo not use root account to access database, create new user with restricted access range (private network only), grant only specific database  
+1. Database access  
+   Dzo not use root account to access database, create new user with restricted access range (private network only), grant only specific database
 
 2. AWS configuration  
-In SES or S3 configuration, id and key configuration is not recommended  
-Modoo Collection WAS support [Temporary security credentials in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html)  
-Automatically detect EC2 Roles and provide temporary security credentials for accessing AWS resources  
-If you need more information about this, [follow this link](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html)  
-We highly recommand that use this option (if you leave id and key blank, automatically use this option, See [Configuration](#configuration))  
-
-Database access management  
-Do not use root account to access database, make new role with restricted access
+   In SES or S3 configuration, id and key configuration is not recommended  
+   Modoo Collection WAS support [Temporary security credentials in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html)  
+   Automatically detect EC2 Roles and provide temporary security credentials for accessing AWS resources  
+   If you need more information about this, [follow this link](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html)  
+   We highly recommand that use this option (if you leave id and key blank, automatically use this option, See [Configuration](#configuration))
 
 ## Test and Develop
 
