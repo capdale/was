@@ -6,8 +6,11 @@ RUN apk update && apk upgrade && apk add --no-cache rc-service
 
 WORKDIR /server
 
-COPY ./was-linux-amd64 ./
-COPY ./config.yaml ./
+
+COPY build/was-linux-amd64 .
+COPY /templates ./templates
+COPY /static ./static 
+COPY example.yaml config.yaml
 
 ENV GIN_MODE=release
 

@@ -9,8 +9,10 @@ RUN apt-get update && \
 
 WORKDIR /server
 
-COPY ./was-linux-arm64 ./
-COPY ./config.yaml ./
+COPY build/was-linux-arm64 .
+COPY /templates ./templates
+COPY /static ./static 
+COPY example.yaml config.yaml
 
 EXPOSE 443
 
